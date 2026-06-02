@@ -8,3 +8,35 @@
   --dark:#102437;
   --text:#1F2937;
 }
+
+
+.phone-input {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 48px;
+}
+
+.phone-input .PhoneInputCountry {
+  margin-right: 0.5rem;
+}
+
+.phone-input .PhoneInputCountrySelect {
+  border: none;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+.phone-input .PhoneInputInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+.phone-input .PhoneInputInput::placeholder {
+  color: #9ca3af;
+}

@@ -1,19 +1,18 @@
+import CategoriesSection from "../../components/home/CategoriesSection";
+import FeedSection from "../../components/home/FeedSection";
+import HeroSection from "../../components/home/HeroSection";
+import VerifiedArtisans from "../../components/home/VerifiedArtisans";
+
 export default function Home() {
   return (
-    <div>
+    <div className="min-h-screen bg-[#F8F5F1] text-[#182433]">
+      <HeroSection />
 
-      <section className="max-w-7xl mx-auto px-6 py-20">
-
-        <h1 className="text-6xl font-bold max-w-2xl leading-tight">
-          Trouvez les meilleurs artisans du Bénin.
-        </h1>
-
-        <p className="mt-6 text-gray-600 max-w-xl text-lg">
-          Mise en relation simple, rapide et sécurisée entre clients et artisans locaux.
-        </p>
-
-      </section>
-
+      <main className="w-full px-6 py-6 sm:px-8 lg:px-10">
+        <CategoriesSection />
+        <VerifiedArtisans />
+        <FeedSection />
+      </main>
     </div>
   );
 }

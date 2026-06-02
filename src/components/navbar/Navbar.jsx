@@ -1,33 +1,53 @@
-export default function Navbar() {
+import { Link } from "react-router-dom";
+import logo from "../../assets/images/logo.webp";
+
+import NavLinks from "./NavLinks";
+import ProfileDropdown from "./ProfileDropdown";
+import MobileMenu from "./MobileMenu";
+
+export default function Navbar({ user }) {
+  const isAuthenticated = !!user;
+
   return (
-    <header className="w-full bg-white shadow-sm border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <header className="absolute top-0 left-0 z-50 w-full border-b border-white/10 bg-[#102437]/35 backdrop-blur-md">
+      <div className="flex h-20 w-full items-center justify-between px-6 sm:px-8 lg:px-10">
 
-        <div>
-          <h1 className="text-2xl font-bold text-[#1A3A5C]">
-            FYA
-          </h1>
+        {/* Logo */}
+        <Link to="/">
+          <img
+            src={logo}
+            alt="FYA Logo"
+            className="h-20 w-auto"
+          />
+        </Link>
 
-          <p className="text-xs text-gray-500">
-            Find Your Artisans
-          </p>
-        </div>
+        {/* Navigation Desktop */}
+        <NavLinks />
 
-        <nav className="hidden md:flex items-center gap-8">
-          <a href="#">Accueil</a>
-          <a href="#">Explorer</a>
-          <a href="#">Appels d'offres</a>
-          <a href="#">À propos</a>
-        </nav>
+        {/* Actions */}
+        <div className="flex items-center gap-4">
 
-        <div className="flex items-center gap-3">
-          <button className="px-5 py-2 rounded-xl border border-gray-300">
-            Se connecter
-          </button>
+          {isAuthenticated ? (
+            <ProfileDropdown user={user} />
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="px-5 py-2 rounded-xl border border-white/45 text-white hover:bg-white/10 transition"
+              >
+                Se connecter
+              </Link>
 
-          <button className="px-5 py-2 rounded-xl bg-[#C96B2C] text-white">
-            S'inscrire
-          </button>
+              <Link
+                to="/register"
+                className="px-5 py-2 rounded-xl bg-[#C96B2C] text-white hover:bg-[#b65e23] transition"
+              >
+                S'inscrire
+              </Link>
+            </>
+          )}
+
+          <MobileMenu />
         </div>
 
       </div>
