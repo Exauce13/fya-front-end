@@ -1,83 +1,147 @@
-import { useState } from "react";
-import { NavLink, Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink } from "react-router-dom";
 
 import {
-  Menu,
-  X,
-  Home,
-  Search,
   Briefcase,
+  Home,
+  LogOut,
+  Menu,
   MessageCircle,
+  Search,
   User,
-  LogOut
+  X,
 } from "lucide-react";
+import { useUserMode } from "../../context/useUserMode";
 
-export default function MobileMenu() {
+const links = [
+  { to: "/", label: "Accueil", icon: Home },
+  { to: "/explorer", label: "Explorer", icon: Search },
+  { to: "/offres", label: "Appels d'offres", icon: Briefcase },
+  { to: "/messages", label: "Messagerie", icon: MessageCircle },
+];
+
+export default function MobileMenu({ user, theme = "dark" }) {
+  const menuRef = useRef(null);
+  const { setRole } = useUserMode();
   const [open, setOpen] = useState(false);
 
+  const close = () => setOpen(false);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!menuRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("touchstart", closeOnOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("touchstart", closeOnOutsideClick);
+    };
+  }, [open]);
+
   return (
-    <>
+    <div ref={menuRef} className="md:hidden">
       <button
-        className="md:hidden"
-        onClick={() => setOpen(true)}
+        className={`grid h-11 w-11 place-items-center rounded-xl border transition ${
+          theme === "light"
+            ? "border-[#eadfd3] bg-white text-[#182433] shadow-sm hover:bg-[#fbfaf8]"
+            : "border-white/25 bg-white/10 text-white hover:bg-white/15"
+        }`}
+        onClick={() => setOpen((current) => !current)}
+        aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
       >
-        <Menu size={28} />
+        {open ? <X size={23} /> : <Menu size={24} />}
       </button>
 
       {open && (
-        <div className="fixed inset-0 bg-white z-50">
+        <div className="fixed right-4 top-[72px] z-[70] w-[min(330px,calc(100vw-32px))] md:hidden">
+          <div className="overflow-hidden rounded-xl border border-[#eadfd3] bg-white shadow-sm">
+            {user && (
+              <div className="border-b border-[#eadfd3] p-4">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="h-12 w-12 rounded-full object-cover"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate font-extrabold text-[#182433]">{user.name}</p>
+                    <p className="truncate text-sm font-semibold text-gray-500">
+                      {user.email || "Compte utilisateur"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
-          <div className="flex justify-end p-6">
-            <button onClick={() => setOpen(false)}>
-              <X size={30} />
-            </button>
+            <nav>
+              {links.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={close}
+                  className={({ isActive }) =>
+                    `flex min-h-[52px] items-center gap-3 border-b border-[#eadfd3] px-4 py-3 text-sm font-extrabold transition ${
+                      isActive
+                        ? "bg-[#102437] text-white"
+                        : "bg-white text-[#182433] hover:bg-[#fff3ea]"
+                    }`
+                  }
+                >
+                  <Icon size={19} />
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
+
+            {user ? (
+              <>
+                <Link
+                  to="/profile"
+                  onClick={close}
+                  className="flex min-h-[52px] items-center gap-3 border-b border-[#eadfd3] bg-white px-4 py-3 text-sm font-extrabold text-[#182433] transition hover:bg-[#fff3ea]"
+                >
+                  <User size={18} />
+                  Profil
+                </Link>
+                <button
+                  onClick={() => {
+                    setRole("visitor");
+                    close();
+                  }}
+                  className="flex min-h-[52px] w-full items-center gap-3 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-100"
+                >
+                  <LogOut size={18} />
+                  Déconnexion
+                </button>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 p-4">
+                <Link
+                  to="/login"
+                  onClick={close}
+                  className="grid min-h-11 place-items-center rounded-lg border border-[#C96B2C]/35 text-sm font-extrabold text-[#C96B2C]"
+                >
+                  Se connecter
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={close}
+                  className="grid min-h-11 place-items-center rounded-lg bg-[#C96B2C] text-sm font-extrabold text-white"
+                >
+                  S'inscrire
+                </Link>
+              </div>
+            )}
           </div>
-
-          <nav className="flex flex-col px-8 gap-6 text-lg">
-
-            <NavLink to="/">
-              <div className="flex items-center gap-3">
-                <Home />
-                Accueil
-              </div>
-            </NavLink>
-
-            <NavLink to="/explorer">
-              <div className="flex items-center gap-3">
-                <Search />
-                Explorer
-              </div>
-            </NavLink>
-
-            <NavLink to="/offres">
-              <div className="flex items-center gap-3">
-                <Briefcase />
-                Appels d'offres
-              </div>
-            </NavLink>
-
-            <NavLink to="/messages">
-              <div className="flex items-center gap-3">
-                <MessageCircle />
-                Messagerie
-              </div>
-            </NavLink>
-
-            <Link to="/profile">
-              <div className="flex items-center gap-3">
-                <User />
-                Profil
-              </div>
-            </Link>
-
-            <button className="flex items-center gap-3 text-red-600">
-              <LogOut />
-              Déconnexion
-            </button>
-
-          </nav>
         </div>
       )}
-    </>
+    </div>
   );
 }

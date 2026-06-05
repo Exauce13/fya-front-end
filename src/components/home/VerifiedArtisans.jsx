@@ -1,17 +1,26 @@
-importVerifiedArtisans() {
-  return (
-    <section className="mt-7">
-      <SectionHeader title="Artisans vérifiés" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {artisans.map((artisan) => (
-          <article
-            key={artisan.name { Check, MapPin, Star } from "lucide-react";
-
+import { Link } from "react-router-dom";
+import { Check, MapPin, Star } from "lucide-react";
 import { SectionHeader } from "./CategoriesSection";
 import { artisans } from "./homeData";
+import { useUserMode } from "../../context/useUserMode";
 
-export default function }
-            className="overflow-hidden rounded-lg border border-[#eadfd3] bg-white shadow-sm"
+export default function VerifiedArtisans() {
+  const previewArtisans = artisans.slice(0, 5);
+  const { isVisitor } = useUserMode();
+
+  return (
+    <section className="mt-7">
+      <SectionHeader
+        title="Artisans vérifiés"
+        actionLink={isVisitor ? "/login" : "/explorer?verified=true"}
+        actionLabel="Voir tous +"
+      />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        {previewArtisans.map((artisan) => (
+          <Link
+              key={artisan.slug}
+              to={isVisitor ? "/login" : `/artisans/${artisan.slug}`}
+            className="overflow-hidden rounded-lg border border-[#eadfd3] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className="relative h-32">
               <img src={artisan.image} alt={artisan.name} className="h-full w-full object-cover" />
@@ -31,7 +40,7 @@ export default function }
                 {artisan.rating} <span className="font-medium text-gray-500">({artisan.reviews})</span>
               </p>
             </div>
-          </article>
+          </Link>
         ))}
       </div>
     </section>

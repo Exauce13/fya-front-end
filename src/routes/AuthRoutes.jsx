@@ -19,15 +19,6 @@ export default function AppRoutes() {
       <Route path="/register" element={<RegisterChoiceCard />} />
 
       <Route path="/forget-password" element={<ForgetPassword />} />
-      {/* <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      /> */}
-
     </Routes>
   )
 }

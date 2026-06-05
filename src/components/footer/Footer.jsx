@@ -11,7 +11,7 @@ const columns = [
 export default function Footer() {
   return (
     <footer className="mt-8 bg-[#062033] text-white">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
+      <div className="grid w-full gap-8 px-6 py-10 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:px-10">
         <div>
           <img src={logo} alt="FYA" className="h-14 w-auto" />
           <p className="mt-4 max-w-xs text-sm leading-6 text-white/72">
@@ -51,7 +51,7 @@ export default function Footer() {
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-7xl border-t border-white/10 px-4 py-5 text-xs text-white/55 sm:px-6">
+      <div className="border-t border-white/10 px-6 py-5 text-xs text-white/55 sm:px-8 lg:px-10">
         © 2026 FYA - Find Your Artisans. Tous droits réservés.
       </div>
     </footer>

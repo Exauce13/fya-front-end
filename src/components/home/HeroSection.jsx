@@ -1,5 +1,4 @@
 import SearchBar from "./SearchBar";
-import StatsSection from "./StatsSection";
 import { homeAssets } from "./homeData";
 import heroAside from "../../assets/images/hero-aside.png";
 

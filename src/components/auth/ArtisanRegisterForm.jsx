@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import logo from "../../assets/images/logo.webp";
+import { serviceCategories } from "../../data/serviceCategories";
 
 const artisanSchema = z
   .object({
@@ -17,25 +18,26 @@ const artisanSchema = z
       .string()
       .email("Veuillez saisir une adresse email valide"),
 
-    name: z
+    full_name: z
       .string()
-      .min(2, "Le nom doit contenir au moins 2 caractères"),
-
-    surname: z
-      .string()
-      .min(2, "Le prénom doit contenir au moins 2 caractères"),
+      .min(3, "Le nom et prénoms doivent contenir au moins 3 caractères"),
 
     metier: z
       .string()
       .min(1, "Veuillez sélectionner un métier"),
 
-    atname: z
+    experience_years: z
       .string()
-      .min(3, "Le nom de l'atelier doit contenir au moins 3 caractères"),
+      .min(1, "Veuillez saisir vos années d'expérience")
+      .regex(/^\d+$/, "Veuillez saisir un nombre valide"),
 
     ville: z
       .string()
       .min(2, "Veuillez saisir une ville valide"),
+
+    quartier: z
+      .string()
+      .min(2, "Veuillez saisir un quartier valide"),
 
     password: z
       .string()
@@ -185,86 +187,68 @@ export default function ArtisanRegisterForm() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block mb-2 text-sm font-medium">
-                Nom
-              </label>
-
-              <input
-                type="text"
-                {...register("name")}
-                className={inputClass(errors.name)}
-              />
-
-              {errors.name && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block mb-2 text-sm font-medium">
-                Prénom
-              </label>
-
-              <input
-                type="text"
-                {...register("surname")}
-                className={inputClass(errors.surname)}
-              />
-
-              {errors.surname && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.surname.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Métier */}
           <div>
             <label className="block mb-2 text-sm font-medium">
-              Métier
-            </label>
-
-            <select
-              {...register("metier")}
-              className={inputClass(errors.metier)}
-            >
-              <option value="">Sélectionnez votre métier</option>
-              <option value="plombier">Plombier</option>
-              <option value="electricien">Électricien</option>
-              <option value="menuisier">Menuisier</option>
-              <option value="peintre">Peintre</option>
-              <option value="carreleur">Carreleur</option>
-            </select>
-
-            {errors.metier && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.metier.message}
-              </p>
-            )}
-          </div>
-
-          {/* Atelier */}
-          <div>
-            <label className="block mb-2 text-sm font-medium">
-              Nom de l'atelier
+              Nom et prénoms
             </label>
 
             <input
               type="text"
-              {...register("atname")}
-              className={inputClass(errors.atname)}
+              {...register("full_name")}
+              className={inputClass(errors.full_name)}
             />
 
-            {errors.atname && (
+            {errors.full_name && (
               <p className="text-red-500 text-sm mt-1">
-                {errors.atname.message}
+                {errors.full_name.message}
               </p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Métier */}
+            <div>
+              <label className="block mb-2 text-sm font-medium">
+                Métier
+              </label>
+
+              <select
+                {...register("metier")}
+                className={inputClass(errors.metier)}
+              >
+                <option value="">Sélectionnez votre métier</option>
+                {serviceCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+
+              {errors.metier && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.metier.message}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block mb-2 text-sm font-medium">
+                Années d'expérience
+              </label>
+
+              <input
+                type="number"
+                min="0"
+                {...register("experience_years")}
+                className={inputClass(errors.experience_years)}
+              />
+
+              {errors.experience_years && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.experience_years.message}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Ville */}
@@ -282,6 +266,25 @@ export default function ArtisanRegisterForm() {
             {errors.ville && (
               <p className="text-red-500 text-sm mt-1">
                 {errors.ville.message}
+              </p>
+            )}
+          </div>
+
+          {/* Quartier */}
+          <div>
+            <label className="block mb-2 text-sm font-medium">
+              Quartier
+            </label>
+
+            <input
+              type="text"
+              {...register("quartier")}
+              className={inputClass(errors.quartier)}
+            />
+
+            {errors.quartier && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.quartier.message}
               </p>
             )}
           </div>

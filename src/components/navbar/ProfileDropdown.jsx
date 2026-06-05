@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -6,25 +6,49 @@ import {
   LogOut,
   ChevronDown
 } from "lucide-react";
+import { useUserMode } from "../../context/useUserMode";
 
-export default function ProfileDropdown({ user }) {
+export default function ProfileDropdown({ user, theme = "dark" }) {
+  const dropdownRef = useRef(null);
+  const { setRole } = useUserMode();
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const closeOnOutsideClick = (event) => {
+      if (!dropdownRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("touchstart", closeOnOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("touchstart", closeOnOutsideClick);
+    };
+  }, [open]);
+
   const handleLogout = () => {
-    console.log("Déconnexion");
+    setRole("visitor");
+    setOpen(false);
   };
 
   return (
-    <div className="relative">
+    <div ref={dropdownRef} className="relative">
 
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-3"
+        className={`flex items-center gap-3 ${theme === "light" ? "text-[#182433]" : "text-white"}`}
       >
         <img
           src={user.avatar}
           alt={user.name}
-          className="w-10 h-10 rounded-full object-cover border"
+          className={`w-10 h-10 rounded-full object-cover border ${
+            theme === "light" ? "border-[#eadfd3]" : "border-white/40"
+          }`}
         />
 
         <ChevronDown size={18} />
