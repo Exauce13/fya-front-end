@@ -1,65 +1,100 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 
+import ApplicationModal from "../../components/offers/ApplicationModal";
 import OfferList from "../../components/offers/OfferList";
+import OfferMediaViewer from "../../components/offers/OfferMediaViewer";
 import OfferTabs from "../../components/offers/OfferTabs";
+import { applyToOffer, getOfferFeed, getOfferItems, normalizeOffer } from "../../services/offersService";
+import { getApiMessage } from "../../services/apiClient";
 import { useUserMode } from "../../context/useUserMode";
-
-const initialOffers = [
-  {
-    id: 3,
-    title: "Réalisation d'armoires de cuisine",
-    category: "Menuiserie",
-    location: "Porto-Novo",
-    budget: "350 000 FCFA",
-    proposals: 1,
-    publishedAgo: "1 semaine",
-    status: "open",
-    description: "Conception d'armoires de cuisine avec finitions simples.",
-    owner: false,
-    applicants: [],
-  },
-  {
-    id: 4,
-    title: "Installation électrique complète",
-    category: "Électricité",
-    location: "Parakou",
-    budget: "650 000 FCFA",
-    proposals: 7,
-    publishedAgo: "4 semaines",
-    status: "open",
-    description: "Installation électrique pour une maison neuve.",
-    owner: false,
-    applicants: [],
-  },
-  {
-    id: 5,
-    title: "Peinture intérieure d'un appartement",
-    category: "Peinture",
-    location: "Cotonou",
-    budget: "180 000 FCFA",
-    proposals: 4,
-    publishedAgo: "3 jours",
-    status: "open",
-    description: "Peinture complète de trois pièces et finitions propres.",
-    owner: false,
-    applicants: [],
-  },
-];
+import { getAppliedOfferIds, setOfferApplied } from "../../utils/appliedOffersStorage";
 
 export default function Offers() {
   const { user } = useUserMode();
-  const [offers] = useState(initialOffers);
-  const [appliedOfferIds, setAppliedOfferIds] = useState([]);
-  const visibleOffers = user?.trade
-    ? offers.filter((offer) => offer.category === user.trade)
-    : offers;
+  const currentArtisanId = user?.artisan?.id || user?.artisan_p?.id || user?.artisan_id;
+  const [offers, setOffers] = useState([]);
+  const [appliedOfferIds, setAppliedOfferIds] = useState(() => getAppliedOfferIds(user?.id));
+  const [selectedOffer, setSelectedOffer] = useState(null);
+  const [previewedOffer, setPreviewedOffer] = useState(null);
+  const [applying, setApplying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [apiMessage, setApiMessage] = useState("");
 
-  const applyToOffer = (offer) => {
-    setAppliedOfferIds((current) =>
-      current.includes(offer.id) ? current : [...current, offer.id]
-    );
+  useEffect(() => {
+    let active = true;
+    const storedAppliedIds = getAppliedOfferIds(user?.id).map(String);
+
+    async function loadOffers() {
+      setLoading(true);
+      setApiMessage("");
+      try {
+        const payload = await getOfferFeed();
+        if (active) {
+          const items = getOfferItems(payload)
+            .map((offer) => normalizeOffer(offer, false));
+          const backendAppliedIds = items
+            .filter((offer) =>
+              offer.applicants?.some((applicant) =>
+                Number(applicant.userId) === Number(user?.id) ||
+                Number(applicant.artisanId) === Number(currentArtisanId)
+              )
+            )
+            .map((offer) => String(offer.id));
+          backendAppliedIds.forEach((offerId) => setOfferApplied(user?.id, offerId));
+          setOffers(items);
+          setAppliedOfferIds((current) =>
+            Array.from(new Set([...current.map(String), ...storedAppliedIds, ...backendAppliedIds]))
+          );
+          setApiMessage(items.length ? "" : "Aucun appel d'offres correspondant à votre métier.");
+        }
+      } catch (error) {
+        if (active) {
+          setOffers([]);
+          setApiMessage(getApiMessage(error, "Aucun appel d'offres disponible."));
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadOffers();
+
+    return () => {
+      active = false;
+    };
+  }, [currentArtisanId, user?.id]);
+
+  const openApplicationForm = (offer) => {
+    setSelectedOffer(offer);
+  };
+
+  const submitApplication = async (payload) => {
+    if (!selectedOffer) return;
+
+    setApplying(true);
+    try {
+      await applyToOffer(selectedOffer.id, payload);
+      setOfferApplied(user?.id, selectedOffer.id);
+      setAppliedOfferIds((current) =>
+        current.some((id) => String(id) === String(selectedOffer.id))
+          ? current
+          : [...current, String(selectedOffer.id)]
+      );
+      setOffers((current) =>
+        current.map((offer) =>
+          String(offer.id) === String(selectedOffer.id)
+            ? { ...offer, proposals: Number(offer.proposals || 0) + 1 }
+            : offer
+        )
+      );
+      setSelectedOffer(null);
+    } catch (error) {
+      alert(getApiMessage(error, "Impossible d'envoyer la candidature."));
+    } finally {
+      setApplying(false);
+    }
   };
 
   return (
@@ -86,14 +121,29 @@ export default function Offers() {
         <OfferTabs active="all" />
 
         <div>
+          {loading && (
+            <p className="py-6 text-sm font-bold text-gray-500">Chargement des appels d'offres...</p>
+          )}
+          {apiMessage && !loading && (
+            <p className="py-6 text-sm font-bold text-gray-500">{apiMessage}</p>
+          )}
           <OfferList
-            offers={visibleOffers}
+            offers={offers}
             mode="all"
             appliedOfferIds={appliedOfferIds}
-            onApply={applyToOffer}
+            onApply={openApplicationForm}
+            onPreviewMedia={setPreviewedOffer}
           />
         </div>
       </section>
+
+      <ApplicationModal
+        offer={selectedOffer}
+        loading={applying}
+        onClose={() => setSelectedOffer(null)}
+        onSubmit={submitApplication}
+      />
+      <OfferMediaViewer offer={previewedOffer} onClose={() => setPreviewedOffer(null)} />
     </div>
   );
 }

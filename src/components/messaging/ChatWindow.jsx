@@ -2,6 +2,7 @@ import { MoreHorizontal } from "lucide-react";
 
 import ChatInput from "./ChatInput";
 import MessageBubble from "./MessageBubble";
+import UserNameLink from "../ui/UserNameLink";
 
 export default function ChatWindow({
   conversation,
@@ -33,7 +34,15 @@ export default function ChatWindow({
         <div className="flex items-center gap-3">
           <img src={conversation.avatar} alt={conversation.name} className="h-14 w-14 rounded-full object-cover" />
           <div>
-            <h2 className="text-xl font-extrabold text-[#182433]">{conversation.name}</h2>
+            <h2 className="text-xl font-extrabold text-[#182433]">
+              <UserNameLink
+                name={conversation.name}
+                id={conversation.userId}
+                type={conversation.userType}
+              >
+                {conversation.name}
+              </UserNameLink>
+            </h2>
           </div>
         </div>
         <button

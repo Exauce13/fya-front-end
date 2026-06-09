@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Images } from "lucide-react";
+import { Bell, BriefcaseBusiness, Images } from "lucide-react";
 
 import OfferStatusBadge from "./OfferStatusBadge";
 
@@ -8,8 +8,12 @@ export default function OfferCard({
   applied = false,
   onApply,
   onSelect,
+  onPreviewMedia,
 }) {
   const isMine = mode === "mine";
+  const hasNewApplications = isMine && offer.status === "open" && Boolean(offer.hasNewApplications);
+  const visiblePreviewMedia = offer.photos?.slice(0, 3) || [];
+  const remainingMediaCount = Math.max(Number(offer.photos?.length || 0) - visiblePreviewMedia.length, 0);
 
   return (
     <article
@@ -22,7 +26,11 @@ export default function OfferCard({
     >
       <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-lg bg-[#fff3ea] text-[#C96B2C]">
         {offer.photos?.[0]?.src ? (
-          <img src={offer.photos[0].src} alt={offer.title} className="h-full w-full bg-[#f6f2ed] object-cover" />
+          offer.photos[0].type === "video" ? (
+            <video src={offer.photos[0].src} className="h-full w-full bg-[#f6f2ed] object-cover" />
+          ) : (
+            <img src={offer.photos[0].src} alt={offer.title} className="h-full w-full bg-[#f6f2ed] object-cover" />
+          )
         ) : (
           <BriefcaseBusiness size={26} />
         )}
@@ -35,9 +43,59 @@ export default function OfferCard({
           <span className="mx-1">•</span> Budget: {offer.budget}
         </p>
         {offer.photos?.length > 0 && (
-          <p className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-[#145DA0]">
-            <Images size={14} />
-            {offer.photos.length} photo(s) jointe(s)
+          <div className="mt-3">
+            {onPreviewMedia ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPreviewMedia(offer);
+                }}
+                className="inline-flex items-center gap-1 text-xs font-extrabold text-[#145DA0] transition hover:text-[#104f88]"
+              >
+                <Images size={14} />
+                Voir {offer.photos.length} pièce(s) jointe(s)
+              </button>
+            ) : (
+              <p className="inline-flex items-center gap-1 text-xs font-extrabold text-[#145DA0]">
+                <Images size={14} />
+                {offer.photos.length} pièce(s) jointe(s)
+              </p>
+            )}
+
+            {!isMine && onPreviewMedia && (
+              <div className="mt-2 flex max-w-sm gap-2">
+                {visiblePreviewMedia.map((item, index) => (
+                  <button
+                    key={`${item.src}-${index}`}
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onPreviewMedia?.(offer);
+                    }}
+                    className="relative h-16 w-20 overflow-hidden rounded-lg border border-[#eadfd3] bg-[#f6f2ed]"
+                    aria-label="Afficher les pièces jointes"
+                  >
+                    {item.type === "video" ? (
+                      <video src={item.src} className="h-full w-full object-cover" />
+                    ) : (
+                      <img src={item.src} alt={item.name} className="h-full w-full object-cover" />
+                    )}
+                    {index === visiblePreviewMedia.length - 1 && remainingMediaCount > 0 && (
+                      <span className="absolute inset-0 grid place-items-center bg-[#182433]/60 text-xs font-extrabold text-white">
+                        +{remainingMediaCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {hasNewApplications && (
+          <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#FFF4DF] px-3 py-1 text-xs font-extrabold text-[#B95724]">
+            <Bell size={13} />
+            Nouvelle candidature
           </p>
         )}
       </div>

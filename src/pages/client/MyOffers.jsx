@@ -1,16 +1,28 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Archive, Plus } from "lucide-react";
 
 import OfferList from "../../components/offers/OfferList";
 import OfferTabs from "../../components/offers/OfferTabs";
-import { myOffersSeed, readStoredOffers } from "../../components/offers/offersData";
+import { useUserMode } from "../../context/useUserMode";
+import useMyOffers from "../../hooks/useMyOffers";
+import {
+  getSeenOfferApplications,
+  setSeenOfferApplications,
+} from "../../utils/offerApplicationsSeenStorage";
 
 export default function MyOffers() {
   const navigate = useNavigate();
-  const offers = [...readStoredOffers(), ...myOffersSeed];
+  const { user } = useUserMode();
+  const { offers, loading, message } = useMyOffers(user, "open");
+  const visibleOffers = offers.map((offer) => ({
+    ...offer,
+    hasNewApplications:
+      Number(offer.proposals || 0) > getSeenOfferApplications(user?.id, offer.id),
+  }));
 
   const openOfferDetails = (offer) => {
-    navigate(`/mes-appels-offres/${offer.id}`);
+    setSeenOfferApplications(user?.id, offer.id, offer.proposals);
+    navigate(`/mes-appels-offres/${offer.id}`, { state: { offer } });
   };
 
   return (
@@ -35,11 +47,26 @@ export default function MyOffers() {
         <OfferTabs active="mine" />
 
         <div>
+          {loading && (
+            <p className="py-6 text-sm font-bold text-gray-500">Chargement de vos appels d'offres...</p>
+          )}
+          {message && offers.length === 0 && (
+            <p className="py-6 text-sm font-bold text-gray-500">{message}</p>
+          )}
           <OfferList
-            offers={offers}
+            offers={visibleOffers}
             mode="mine"
             onSelect={openOfferDetails}
           />
+          <div className="mt-6 border-t border-[#eadfd3] pt-5">
+            <Link
+              to="/mes-appels-offres/fermes"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#d9e6f4] px-5 text-sm font-extrabold text-[#145DA0] transition hover:bg-[#f6fbff]"
+            >
+              <Archive size={17} />
+              Voir les appels d'offres fermés
+            </Link>
+          </div>
         </div>
       </section>
     </div>

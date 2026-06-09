@@ -1,16 +1,14 @@
 import { NavLink } from "react-router-dom";
 import {
   BadgeCheck,
-  BarChart3,
   CreditCard,
   FileText,
   Flag,
   Home,
-  MessageSquareWarning,
-  Settings,
   ShieldCheck,
   Users,
 } from "lucide-react";
+import logo from "../../assets/images/logo.webp";
 
 const navItems = [
   { label: "Tableau de bord", path: "/admin", icon: Home },
@@ -19,17 +17,13 @@ const navItems = [
   { label: "Appels d'offres", path: "/admin/appels-offres", icon: FileText },
   { label: "Signalements", path: "/admin/signalements", icon: Flag },
   { label: "Paiements", path: "/admin/paiements", icon: CreditCard },
-  { label: "Contenus", path: "/admin/contenus", icon: MessageSquareWarning },
-  { label: "Statistiques", path: "/admin/statistiques", icon: BarChart3 },
-  { label: "Paramètres", path: "/admin/parametres", icon: Settings },
 ];
 
 export default function AdminSidebar({ mobile = false, onNavigate }) {
   return (
     <aside className={`${mobile ? "block" : "sticky top-0 hidden lg:block"} h-screen w-72 shrink-0 bg-[#102D42] px-5 py-7 text-white`}>
-      <div className="mb-10">
-        <p className="text-5xl font-black tracking-normal text-white">FYA</p>
-        <p className="text-sm font-semibold text-white/75">Find Your Artisans</p>
+      <div className="mb-10 flex justify-center">
+        <img src={logo} alt="FYA" className="h-28 w-auto" />
       </div>
 
       <nav className="space-y-2">
@@ -49,9 +43,6 @@ export default function AdminSidebar({ mobile = false, onNavigate }) {
           >
             <Icon size={20} />
             {label}
-            {label === "Paramètres" && (
-              <span className="ml-auto h-2.5 w-2.5 rounded-full bg-[#D96822]" />
-            )}
           </NavLink>
         ))}
       </nav>

@@ -2,30 +2,43 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
 import CreateOfferForm from "../../components/offers/CreateOfferForm";
-import { myOffersSeed, readStoredOffers, saveStoredOffer } from "../../components/offers/offersData";
+import { getApiMessage } from "../../services/apiClient";
+import {
+  buildOfferFormData,
+  createOffer,
+  extractCreatedOffer,
+  saveCreatedOffer,
+} from "../../services/offersService";
+import { useUserMode } from "../../context/useUserMode";
+
+const isBroadcastFailureAfterCreate = (error) => {
+  const message = getApiMessage(error, "");
+  return /pusher|broadcast|localhost:8080|couldn'?t connect to server/i.test(message);
+};
 
 export default function CreateOffer() {
   const navigate = useNavigate();
   const { offerId } = useParams();
-  const editingOffer = [...readStoredOffers(), ...myOffersSeed].find(
-    (offer) => String(offer.id) === offerId
-  );
+  const { user } = useUserMode();
+  const editingOffer = null;
   const isEditing = Boolean(offerId);
 
-  const submitOffer = (form) => {
-    const id = editingOffer?.id ?? Date.now();
-    saveStoredOffer({
-      ...editingOffer,
-      ...form,
-      id,
-      budget: `${Number(form.budget).toLocaleString("fr-FR")} FCFA`,
-      proposals: editingOffer?.proposals ?? 0,
-      publishedAgo: editingOffer?.publishedAgo ?? "quelques secondes",
-      status: editingOffer?.status ?? "open",
-      owner: true,
-      applicants: editingOffer?.applicants ?? [],
-    });
-    navigate("/mes-appels-offres");
+  const submitOffer = async (form) => {
+    const formData = buildOfferFormData(form);
+
+    try {
+      if (!isEditing) {
+        const payload = await createOffer(formData);
+        saveCreatedOffer(user?.id, extractCreatedOffer(payload));
+      }
+      navigate("/mes-appels-offres");
+    } catch (error) {
+      if (isBroadcastFailureAfterCreate(error)) {
+        navigate("/mes-appels-offres");
+        return;
+      }
+      alert(getApiMessage(error, "Impossible de publier cet appel d'offres."));
+    }
   };
 
   return (

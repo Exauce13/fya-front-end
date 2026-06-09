@@ -6,29 +6,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import logo from "../../assets/images/logo.webp";
 import img from "../../assets/images/loginImg.png";
+import { getApiMessage } from "../../services/apiClient";
+import { login } from "../../services/authService";
 
-const isPhoneOrEmail = (value) => {
+const isEmail = (value) => {
   const emailRegex =
     /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 
-  const phoneRegex =
-    /^\+?[1-9]\d{7,14}$/;
-
-  return (
-    emailRegex.test(value.trim()) ||
-    phoneRegex.test(
-      value.replace(/\s/g, "")
-    )
-  );
+  return emailRegex.test(value.trim());
 };
 
 const loginSchema = z.object({
   telemail: z
     .string()
     .min(1, "Ce champ est obligatoire")
-    .refine(isPhoneOrEmail, {
+    .refine(isEmail, {
       message:
-        "Veuillez saisir un email ou un numéro valide",
+        "Veuillez saisir une adresse email valide",
     }),
 
   password: z
@@ -74,22 +68,11 @@ export default function LoginForm() {
     setApiError("");
 
     try {
-      console.log(data);
-
-      // Exemple API
-      // const response = await axios.post("/login", data);
-
-      // Gestion du token
-      // if (data.remember) {
-      //   localStorage.setItem("token", response.data.token);
-      // } else {
-      //   sessionStorage.setItem("token", response.data.token);
-      // }
-
-      navigate("/dashboard");
-    } catch {
+      await login(data);
+      navigate("/", { replace: true });
+    } catch (error) {
       setApiError(
-        "Email/téléphone ou mot de passe incorrect."
+        getApiMessage(error, "Email ou mot de passe incorrect.")
       );
     }
   };
@@ -140,19 +123,19 @@ export default function LoginForm() {
               </div>
             )}
 
-            {/* Email ou téléphone */}
+            {/* Email */}
             <div>
               <label
                 htmlFor="telemail"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Téléphone ou email
+                Email
               </label>
 
               <input
                 type="text"
                 id="telemail"
-                placeholder="exemple@email.com ou +2290190123456"
+                placeholder="exemple@email.com"
                 {...register("telemail")}
                 className={inputClass(
                   errors.telemail

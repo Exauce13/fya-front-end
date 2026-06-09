@@ -6,11 +6,10 @@ import {
   LogOut,
   ChevronDown
 } from "lucide-react";
-import { useUserMode } from "../../context/useUserMode";
+import { logout } from "../../services/authService";
 
 export default function ProfileDropdown({ user, theme = "dark" }) {
   const dropdownRef = useRef(null);
-  const { setRole } = useUserMode();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -31,8 +30,12 @@ export default function ProfileDropdown({ user, theme = "dark" }) {
     };
   }, [open]);
 
-  const handleLogout = () => {
-    setRole("visitor");
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // Le nettoyage local est deja effectue dans le service.
+    }
     setOpen(false);
   };
 

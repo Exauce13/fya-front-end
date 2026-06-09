@@ -1,49 +1,145 @@
-import { useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Heart, MessageCircle, Send } from "lucide-react";
 
-import { defaultComments, defaultPost } from "../../data/postsData";
+import UserNameLink from "../../components/ui/UserNameLink";
+import { createComment, getPostComments, likePost } from "../../services/postsService";
+import { getApiMessage, getStorageUrl } from "../../services/apiClient";
+import { useUserMode } from "../../context/useUserMode";
+import profileAvatar from "../../assets/images/profile-avatar.svg";
+import { isPostLiked, setPostLiked } from "../../utils/likedPostsStorage";
+
+const normalizeComment = (comment) => ({
+  id: comment.id,
+  author: comment.user?.name || "Utilisateur",
+  authorId: comment.user?.artisan?.id || comment.user?.artisan_p?.id || comment.user?.client?.id || comment.user_id,
+  authorType: comment.user?.statut || comment.user?.role || "client",
+  avatar: getStorageUrl(comment.user?.photo) || profileAvatar,
+  date: comment.created_at ? new Date(comment.created_at).toLocaleDateString("fr-FR") : "",
+  text: comment.comments || comment.commentaire || comment.content || comment.text || "",
+});
 
 export default function PostDetails() {
   const location = useLocation();
-  const post = location.state?.post || defaultPost;
-  const initialComments = useMemo(() => {
-    if (post.id === defaultPost.id) return defaultComments;
-    return [];
-  }, [post.id]);
-  const [liked, setLiked] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useUserMode();
+  const post = location.state?.post;
+  const [likeState, setLikeState] = useState(() => ({
+    liked: Boolean(post?.likedByCurrentUser) || isPostLiked(user?.id, post?.id),
+    count: Number(post?.likes || 0),
+  }));
+  const likeStateRef = useRef(likeState);
+  const [likePending, setLikePending] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState(initialComments);
-  const likesCount = post.likes + (liked ? 1 : 0);
+  const [comments, setComments] = useState([]);
 
-  const addComment = (event) => {
+  useEffect(() => {
+    if (!post?.id) return undefined;
+    let active = true;
+
+    async function loadComments() {
+      try {
+        const payload = await getPostComments(post.id);
+        const items = Array.isArray(payload) ? payload : payload?.data || payload?.commentaires || [];
+        if (active) setComments(items.map(normalizeComment));
+      } catch {
+        if (active) setComments([]);
+      }
+    }
+
+    loadComments();
+
+    return () => {
+      active = false;
+    };
+  }, [post?.id]);
+
+  if (!post) {
+    return (
+      <div className="min-h-screen bg-[#F8F5F1] px-4 pb-10 pt-24 text-[#182433] sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl rounded-lg border border-[#eadfd3] bg-white p-6 shadow-sm">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#eadfd3] bg-white px-4 text-sm font-extrabold text-[#182433] transition hover:bg-[#fff3ea]"
+          >
+            <ArrowLeft size={17} />
+            Retour
+          </button>
+          <p className="mt-5 text-sm font-bold text-gray-500">Publication introuvable.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const addComment = async (event) => {
     event.preventDefault();
     const text = commentText.trim();
     if (!text) return;
 
+    let createdComment = null;
+    try {
+      const payload = await createComment({ postId: post.id, text });
+      createdComment = payload?.commentaire || payload?.data?.commentaire;
+    } catch (error) {
+      alert(error.response?.data?.message || "Impossible d'ajouter le commentaire.");
+      return;
+    }
+
     setComments((current) => [
-      {
-        id: Date.now(),
-        author: "John Doe",
-        avatar: "https://i.pravatar.cc/120?img=3",
-        date: "maintenant",
-        text,
-      },
+      createdComment
+        ? normalizeComment(createdComment)
+        : {
+            id: Date.now(),
+            author: user?.name || "Utilisateur",
+            authorId: user?.artisan?.id || user?.artisan_p?.id || user?.client?.id || user?.id,
+            authorType: user?.role || user?.statut,
+            avatar: user?.avatar || profileAvatar,
+            date: "maintenant",
+            text,
+          },
       ...current,
     ]);
     setCommentText("");
   };
 
+  const toggleLike = async () => {
+    if (likePending) return;
+
+    const previousLikeState = likeStateRef.current;
+    const optimisticLikeState = {
+      liked: !previousLikeState.liked,
+      count: Math.max(0, previousLikeState.count + (!previousLikeState.liked ? 1 : -1)),
+    };
+
+    likeStateRef.current = optimisticLikeState;
+    setLikePending(true);
+    setLikeState(optimisticLikeState);
+    setPostLiked(user?.id, post.id, optimisticLikeState.liked);
+
+    try {
+      await likePost(post.id);
+    } catch (error) {
+      likeStateRef.current = previousLikeState;
+      setLikeState(previousLikeState);
+      setPostLiked(user?.id, post.id, previousLikeState.liked);
+      alert(getApiMessage(error, "Impossible d'enregistrer le like."));
+    } finally {
+      setLikePending(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F5F1] px-4 pb-10 pt-24 text-[#182433] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
-        <Link
-          to="/"
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#eadfd3] bg-white px-4 text-sm font-extrabold text-[#182433] transition hover:bg-[#fff3ea]"
         >
           <ArrowLeft size={17} />
           Retour
-        </Link>
+        </button>
 
         <article className="mt-5 rounded-lg border border-[#eadfd3] bg-white p-5 shadow-sm">
           <div className="flex items-start justify-between">
@@ -54,7 +150,16 @@ export default function PostDetails() {
                 className="h-12 w-12 rounded-full object-cover"
               />
               <div>
-                <h1 className="text-base font-extrabold">{post.author}</h1>
+                <h1 className="text-base font-extrabold">
+                  <UserNameLink
+                    name={post.author}
+                    id={post.authorId}
+                    type={post.authorType}
+                    state={post.authorState}
+                  >
+                    {post.author}
+                  </UserNameLink>
+                </h1>
                 <p className="text-xs text-gray-500">{post.meta}</p>
               </div>
             </div>
@@ -66,12 +171,16 @@ export default function PostDetails() {
           {post.images?.length > 0 && (
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
               {post.images.map((image) => (
-                <img
-                  key={image.src}
-                  src={image.src}
-                  alt={image.name}
-                  className="w-full rounded-md"
-                />
+                image.type === "video" ? (
+                  <video key={image.src} src={image.src} controls className="w-full rounded-md" />
+                ) : (
+                  <img
+                    key={image.src}
+                    src={image.src}
+                    alt={image.name}
+                    className="w-full rounded-md"
+                  />
+                )
               ))}
             </div>
           )}
@@ -79,7 +188,7 @@ export default function PostDetails() {
           <div className="mt-4 flex items-center justify-between border-b border-[#eee3d7] pb-3 text-xs font-semibold text-gray-500">
             <span className="flex items-center gap-1 text-red-500">
               <Heart size={15} className="fill-red-500" />
-              {likesCount}
+              {likeState.count}
             </span>
             <span>{comments.length} commentaires</span>
           </div>
@@ -87,13 +196,14 @@ export default function PostDetails() {
           <div className="grid grid-cols-2 pt-3 text-sm font-semibold text-gray-600">
             <button
               type="button"
-              onClick={() => setLiked((current) => !current)}
+              onClick={toggleLike}
+              disabled={likePending}
               className={`flex items-center justify-center gap-2 py-2 ${
-                liked ? "text-red-500" : ""
+                likeState.liked ? "text-red-500" : ""
               }`}
             >
-              <Heart size={16} className={liked ? "fill-red-500" : ""} />
-              J'aime
+              <Heart size={16} className={likeState.liked ? "fill-red-500" : ""} />
+              {likeState.liked ? "Je n'aime plus" : "J'aime"}
             </button>
             <span className="flex items-center justify-center gap-2 py-2 text-[#145DA0]">
               <MessageCircle size={16} />
@@ -107,8 +217,8 @@ export default function PostDetails() {
 
           <form onSubmit={addComment} className="mt-4 flex gap-3">
             <img
-              src="https://i.pravatar.cc/120?img=3"
-              alt="John Doe"
+              src={user?.avatar || profileAvatar}
+              alt={user?.name || "Utilisateur"}
               className="h-11 w-11 rounded-full object-cover"
             />
             <div className="flex flex-1 items-center gap-2 rounded-full bg-[#f6f2ed] px-4">
@@ -138,7 +248,15 @@ export default function PostDetails() {
                 />
                 <div className="flex-1 rounded-lg bg-[#fbfaf8] px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-extrabold">{comment.author}</h3>
+                    <h3 className="text-sm font-extrabold">
+                      <UserNameLink
+                        name={comment.author}
+                        id={comment.authorId}
+                        type={comment.authorType}
+                      >
+                        {comment.author}
+                      </UserNameLink>
+                    </h3>
                     <span className="text-xs font-semibold text-gray-400">{comment.date}</span>
                   </div>
                   <p className="mt-1 text-sm font-semibold leading-6 text-gray-600">{comment.text}</p>

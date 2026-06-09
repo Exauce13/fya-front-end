@@ -1,11 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Clock3, Plus, X } from "lucide-react";
 
 import { useUserMode } from "../../context/useUserMode";
-import { conversations, initialConversationServices } from "../../data/conversationsData";
-
-const storageKey = "fya-conversation-services";
 
 const statusLabels = {
   pending: "En attente",
@@ -32,11 +29,8 @@ export default function ConversationService() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const { isArtisan } = useUserMode();
-  const conversation = conversations.find((item) => String(item.id) === conversationId);
-  const [servicesByConversation, setServicesByConversation] = useState(() => {
-    const saved = localStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : initialConversationServices;
-  });
+  const conversation = { id: conversationId, name: "cette conversation" };
+  const [servicesByConversation, setServicesByConversation] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState({});
@@ -46,10 +40,6 @@ export default function ConversationService() {
     [conversationId, servicesByConversation]
   );
   const activeService = services[0];
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(servicesByConversation));
-  }, [servicesByConversation]);
 
   if (!conversation) {
     return (

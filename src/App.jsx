@@ -2,17 +2,20 @@ import "react-phone-number-input/style.css";
 import { Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/footer/Footer";
-import UserModeSwitcher from "./components/dev/UserModeSwitcher";
 import RoleGate from "./components/routes/RoleGate";
+import ScrollManager from "./components/routes/ScrollManager.jsx";
 import { UserModeProvider } from "./context/UserModeContext";
 import { useUserMode } from "./context/useUserMode";
 import Home from "./pages/public/Home";
 import ExploreArtisans from "./pages/public/ExploreArtisans";
+import ServiceCategories from "./pages/public/ServiceCategories";
 import OffersEntry from "./pages/public/OffersEntry";
 import ArtisanProfile from "./pages/public/ArtisanProfile";
+import ClientPublicProfile from "./pages/public/ClientPublicProfile";
 import PostDetails from "./pages/public/PostDetails";
 import RoleProfile from "./pages/public/RoleProfile";
 import VerificationCenter from "./pages/artisan/VerificationCenter";
+import ClosedOffers from "./pages/client/ClosedOffers";
 import MyOffers from "./pages/client/MyOffers";
 import MyOfferDetails from "./pages/client/MyOfferDetails";
 import CreateOffer from "./pages/client/CreateOffer";
@@ -41,18 +44,22 @@ function AppShell() {
   const isAdminPage = location.pathname.startsWith("/admin");
 
   return (
-    <div className={`min-h-screen bg-[#F8F5F1] ${isAdminPage ? "" : "pb-16"}`}>
+    <div className="min-h-screen bg-[#F8F5F1]">
+      <ScrollManager />
       {!isAuthPage && !isAdminPage && <Navbar user={user} />}
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/metiers" element={<RoleGate><ServiceCategories /></RoleGate>} />
           <Route path="/explorer" element={<RoleGate><ExploreArtisans /></RoleGate>} />
           <Route path="/offres" element={<OffersEntry />} />
           <Route path="/profile" element={<RoleProfile />} />
           <Route path="/artisans/:slug" element={<RoleGate><ArtisanProfile /></RoleGate>} />
+          <Route path="/clients/:slug" element={<RoleGate><ClientPublicProfile /></RoleGate>} />
           <Route path="/publications/:postId" element={<RoleGate><PostDetails /></RoleGate>} />
           <Route path="/verification-artisan" element={<RoleGate allow={["artisan"]}><VerificationCenter /></RoleGate>} />
           <Route path="/mes-appels-offres" element={<RoleGate allow={["artisan", "client"]}><MyOffers /></RoleGate>} />
+          <Route path="/mes-appels-offres/fermes" element={<RoleGate allow={["artisan", "client"]}><ClosedOffers /></RoleGate>} />
           <Route path="/mes-appels-offres/:offerId" element={<RoleGate allow={["artisan", "client"]}><MyOfferDetails /></RoleGate>} />
           <Route path="/appels-offres/nouveau" element={<RoleGate allow={["artisan", "client"]}><CreateOffer /></RoleGate>} />
           <Route path="/appels-offres/:offerId/modifier" element={<RoleGate allow={["artisan", "client"]}><CreateOffer /></RoleGate>} />
@@ -69,7 +76,6 @@ function AppShell() {
         </Routes>
       </main>
       {!isAuthPage && !isAdminPage && <Footer />}
-      <UserModeSwitcher />
     </div>
   );
 }

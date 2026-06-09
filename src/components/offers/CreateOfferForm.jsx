@@ -1,10 +1,11 @@
 import { useState } from "react";
 
-import { serviceCategories } from "../../data/serviceCategories";
+import useMetiers from "../../hooks/useMetiers";
 
 const initialState = {
   title: "",
   category: "",
+  categoryId: "",
   location: "",
   budget: "",
   description: "",
@@ -12,13 +13,15 @@ const initialState = {
 };
 
 export default function CreateOfferForm({ initialOffer, onCancel, onSubmit }) {
+  const { metiers, loading: metiersLoading } = useMetiers();
   const [form, setForm] = useState(() => {
     if (!initialOffer) return initialState;
     return {
       title: initialOffer.title || "",
       category: initialOffer.category || "",
+      categoryId: initialOffer.categoryId || "",
       location: initialOffer.location || "",
-      budget: initialOffer.budget || "",
+      budget: initialOffer.rawBudget || initialOffer.budget || "",
       description: initialOffer.description || "",
       photos: initialOffer.photos || [],
     };
@@ -33,13 +36,23 @@ export default function CreateOfferForm({ initialOffer, onCancel, onSubmit }) {
     onSubmit(form);
   };
 
+  const selectCategory = (value) => {
+    const selected = metiers.find((category) => String(category.id) === String(value));
+
+    setForm((current) => ({
+      ...current,
+      categoryId: selected?.id || "",
+      category: selected?.name || value,
+    }));
+  };
+
   const attachPhotos = (files) => {
     Array.from(files).forEach((file) => {
       const reader = new FileReader();
       reader.onload = () => {
         setForm((current) => ({
           ...current,
-          photos: [...current.photos, { name: file.name, src: reader.result }],
+          photos: [...current.photos, { name: file.name, src: reader.result, file }],
         }));
       };
       reader.readAsDataURL(file);
@@ -83,17 +96,20 @@ export default function CreateOfferForm({ initialOffer, onCancel, onSubmit }) {
         <Field label="Catégorie / métier concerné">
           <select
             required
-            value={form.category}
-            onChange={(event) => updateField("category", event.target.value)}
+            value={form.categoryId}
+            onChange={(event) => selectCategory(event.target.value)}
             className="h-12 w-full rounded-lg border border-[#eadfd3] bg-white px-4 outline-none focus:border-[#C96B2C]"
           >
             <option value="">Sélectionnez une catégorie</option>
-            {serviceCategories.map((category) => (
-              <option key={category} value={category}>
-                {category}
+            {metiers.map((category) => (
+              <option key={category.id || category.name} value={category.id}>
+                {category.name}
               </option>
             ))}
           </select>
+          {metiersLoading && (
+            <p className="mt-1 text-xs font-semibold text-gray-500">Chargement des métiers...</p>
+          )}
         </Field>
 
         <Field label="Ville">
@@ -120,6 +136,8 @@ export default function CreateOfferForm({ initialOffer, onCancel, onSubmit }) {
 
         <Field label="Description" className="md:col-span-2">
           <textarea
+            required
+            minLength={10}
             rows={4}
             value={form.description}
             onChange={(event) => updateField("description", event.target.value)}
@@ -131,7 +149,7 @@ export default function CreateOfferForm({ initialOffer, onCancel, onSubmit }) {
         <Field label="Photos liées à l'appel d'offre" className="md:col-span-2">
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
             onChange={(event) => attachPhotos(event.target.files)}
             className="block w-full rounded-lg border border-dashed border-[#C96B2C]/45 bg-white px-4 py-4 text-sm font-semibold text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-[#C96B2C] file:px-4 file:py-2 file:text-sm file:font-extrabold file:text-white"
@@ -140,7 +158,11 @@ export default function CreateOfferForm({ initialOffer, onCancel, onSubmit }) {
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {form.photos.map((photo) => (
                 <figure key={photo.name} className="overflow-hidden rounded-lg border border-[#eadfd3] bg-white">
-                  <img src={photo.src} alt={photo.name} className="h-64 w-full bg-[#f6f2ed] object-contain" />
+                  {photo.file?.type?.startsWith("video/") || photo.type === "video" ? (
+                    <video src={photo.src} controls className="h-64 w-full bg-[#f6f2ed] object-contain" />
+                  ) : (
+                    <img src={photo.src} alt={photo.name} className="h-64 w-full bg-[#f6f2ed] object-contain" />
+                  )}
                   <figcaption className="flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold text-gray-600">
                     <span className="truncate">{photo.name}</span>
                     <button

@@ -1,5 +1,6 @@
 import { Flag, Star } from "lucide-react";
 import { useState } from "react";
+import UserNameLink from "../ui/UserNameLink";
 
 export default function ReviewSection({ reviews, rating, canReport = false }) {
   const [showReportForm, setShowReportForm] = useState(false);
@@ -31,7 +32,9 @@ export default function ReviewSection({ reviews, rating, canReport = false }) {
               <div className="flex items-center gap-3">
                 <img src={review.avatar} alt={review.author} className="h-11 w-11 rounded-full object-cover" />
                 <div>
-                  <h3 className="text-sm font-extrabold text-[#182433]">{review.author}</h3>
+                  <h3 className="text-sm font-extrabold text-[#182433]">
+                    <UserNameLink name={review.author}>{review.author}</UserNameLink>
+                  </h3>
                   <p className="text-xs font-semibold text-gray-500">{review.date}</p>
                 </div>
               </div>

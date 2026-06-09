@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Check, Download, Mic, Pause, Play, X } from "lucide-react";
+import profileAvatar from "../../assets/images/profile-avatar.svg";
 
 export default function MessageBubble({ message }) {
   const isMine = message.sender === "me";
@@ -158,7 +159,7 @@ function AudioAttachment({ media, isMine }) {
       <div className="flex items-center gap-3">
         <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#d7e3ec]">
           <img
-            src="https://i.pravatar.cc/120?img=12"
+            src={profileAvatar}
             alt=""
             className="h-full w-full object-cover"
           />

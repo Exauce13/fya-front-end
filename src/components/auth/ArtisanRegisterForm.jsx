@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import logo from "../../assets/images/logo.webp";
-import { serviceCategories } from "../../data/serviceCategories";
+import useMetiers from "../../hooks/useMetiers";
+import { getApiMessage } from "../../services/apiClient";
+import { registerArtisan } from "../../services/authService";
 
 const artisanSchema = z
   .object({
@@ -13,7 +16,7 @@ const artisanSchema = z
 
     tel: z
       .string()
-      .regex(/^01\d{8}$/, "Le numéro doit contenir 10 chiffres et commencer par 01"),
+      .regex(/^01[4569]\d{7}$/, "Le numéro doit contenir 10 chiffres et commencer par 014, 015, 016 ou 019"),
     email: z
       .string()
       .email("Veuillez saisir une adresse email valide"),
@@ -33,18 +36,22 @@ const artisanSchema = z
 
     ville: z
       .string()
-      .min(2, "Veuillez saisir une ville valide"),
+      .min(2, "Veuillez saisir une ville valide")
+      .regex(/^[A-Za-zÀ-ÿ\s-]+$/, "La ville doit contenir uniquement des lettres"),
 
     quartier: z
       .string()
-      .min(2, "Veuillez saisir un quartier valide"),
+      .min(2, "Veuillez saisir un quartier valide")
+      .regex(/^[A-Za-zÀ-ÿ\s-]+$/, "Le quartier doit contenir uniquement des lettres"),
 
     password: z
       .string()
       .min(8, "Le mot de passe doit contenir au moins 8 caractères")
+      .max(12, "Le mot de passe ne doit pas dépasser 12 caractères")
       .regex(/[A-Z]/, "Au moins une lettre majuscule")
       .regex(/[a-z]/, "Au moins une lettre minuscule")
-      .regex(/[0-9]/, "Au moins un chiffre"),
+      .regex(/[0-9]/, "Au moins un chiffre")
+      .regex(/[@$!%*?&_\-#]/, "Au moins un caractère spécial"),
 
     confirm_password: z.string(),
 
@@ -60,8 +67,10 @@ const artisanSchema = z
   });
 
 export default function ArtisanRegisterForm() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { metiers, loading: metiersLoading } = useMetiers();
 
   const {
     register,
@@ -84,23 +93,21 @@ export default function ArtisanRegisterForm() {
     if (/[A-Z]/.test(password)) score++;
     if (/[a-z]/.test(password)) score++;
     if (/[0-9]/.test(password)) score++;
+    if (/[@$!%*?&_\-#]/.test(password)) score++;
 
-    if (score <= 2) return "Faible";
-    if (score === 3) return "Moyen";
+    if (score <= 3) return "Faible";
+    if (score === 4) return "Moyen";
     return "Fort";
   };
 
   const onSubmit = async (data) => {
     try {
-      console.log(data);
-
-      // Appel API ici
-      // await axios.post("/api/artisans/register", data);
-
-      alert("Inscription réussie !");
+      const response = await registerArtisan(data);
+      alert(response?.message || "Inscription artisan effectuee avec succes.");
+      navigate("/", { replace: true });
     } catch (error) {
       console.error(error);
-      alert("Une erreur est survenue.");
+      alert(getApiMessage(error, "Une erreur est survenue pendant l'inscription."));
     }
   };
 
@@ -217,12 +224,15 @@ export default function ArtisanRegisterForm() {
                 className={inputClass(errors.metier)}
               >
                 <option value="">Sélectionnez votre métier</option>
-                {serviceCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {metiers.map((category) => (
+                  <option key={category.id || category.name} value={category.id || category.name}>
+                    {category.name}
                   </option>
                 ))}
               </select>
+              {metiersLoading && (
+                <p className="text-xs text-gray-500 mt-1">Chargement des métiers...</p>
+              )}
 
               {errors.metier && (
                 <p className="text-red-500 text-sm mt-1">

@@ -1,25 +1,29 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import CategoryCard from "./CategoryCard";
-import { allCategories, categories } from "./homeData";
+import useMetiers from "../../hooks/useMetiers";
 
 export default function CategoriesSection() {
-  const [showAll, setShowAll] = useState(false);
-  const displayedCategories = showAll ? allCategories : categories;
+  const { metiers, loading } = useMetiers();
+  const categories = metiers.slice(0, 8).map((metier) => ({ name: metier.name }));
 
   return (
     <section>
       <SectionHeader
         title="Métiers populaires"
-        expanded={showAll}
-        onToggle={() => setShowAll((current) => !current)}
+        actionLink="/metiers"
+        actionLabel="Voir toutes +"
       />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
-        {displayedCategories.map((category) => (
+        {categories.map((category) => (
           <CategoryCard key={category.name} category={category} />
         ))}
       </div>
+      {!loading && categories.length === 0 && (
+        <p className="rounded-lg border border-[#eadfd3] bg-white p-5 text-sm font-bold text-gray-500">
+          Aucun métier disponible pour le moment.
+        </p>
+      )}
     </section>
   );
 }

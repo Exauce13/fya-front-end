@@ -6,9 +6,10 @@ export const getPasswordStrength = (password) => {
   if (/[A-Z]/.test(password)) score++;
   if (/[a-z]/.test(password)) score++;
   if (/\d/.test(password)) score++;
+  if (/[@$!%*?&_\-#]/.test(password)) score++;
 
-  if (score <= 2) return "Faible";
-  if (score === 3) return "Moyen";
+  if (score <= 3) return "Faible";
+  if (score === 4) return "Moyen";
   return "Fort";
 };
 
@@ -31,12 +32,16 @@ export const validatePasswordChange = ({
   } else {
     if (newPassword.length < 8) {
       errors.newPassword = "Le mot de passe doit contenir au moins 8 caractères";
+    } else if (newPassword.length > 12) {
+      errors.newPassword = "Le mot de passe ne doit pas dépasser 12 caractères";
     } else if (!/[A-Z]/.test(newPassword)) {
       errors.newPassword = "Le mot de passe doit contenir une majuscule";
     } else if (!/[a-z]/.test(newPassword)) {
       errors.newPassword = "Le mot de passe doit contenir une minuscule";
     } else if (!/\d/.test(newPassword)) {
       errors.newPassword = "Le mot de passe doit contenir un chiffre";
+    } else if (!/[@$!%*?&_\-#]/.test(newPassword)) {
+      errors.newPassword = "Le mot de passe doit contenir un caractère spécial";
     } else if (currentPassword && currentPassword === newPassword) {
       errors.newPassword = "Le nouveau mot de passe doit être différent de l'actuel";
     }

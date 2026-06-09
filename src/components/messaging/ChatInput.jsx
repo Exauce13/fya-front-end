@@ -24,7 +24,7 @@ export default function ChatInput({ text, images, onTextChange, onImagesChange, 
       const reader = new FileReader();
       reader.onload = () => {
         const type = file.type.startsWith("video/") ? "video" : "image";
-        onImagesChange((current) => [...current, { name: file.name, src: reader.result, type }]);
+        onImagesChange((current) => [...current, { name: file.name, src: reader.result, type, file }]);
       };
       reader.readAsDataURL(file);
     });
@@ -47,7 +47,7 @@ export default function ChatInput({ text, images, onTextChange, onImagesChange, 
       const src = URL.createObjectURL(blob);
       onImagesChange((current) => [
         ...current,
-        { name: `audio-${Date.now()}.webm`, src, type: "audio" },
+        { name: `audio-${Date.now()}.webm`, src, type: "audio", file: blob },
       ]);
       stream.getTracks().forEach((track) => track.stop());
     };

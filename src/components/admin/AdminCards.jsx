@@ -1,16 +1,15 @@
-import { BadgeCheck, Eye, Users, Wallet } from "lucide-react";
+import { BadgeCheck, Users, Wallet } from "lucide-react";
 import { adminOverview } from "../../data/adminData";
 
 const cards = [
   { label: "Utilisateurs", value: adminOverview.users, icon: Users, bg: "bg-white" },
   { label: "Artisans", value: adminOverview.artisans, icon: BadgeCheck, bg: "bg-[#EFF8F0]" },
-  { label: "Visites", value: adminOverview.visitors, icon: Eye, bg: "bg-white" },
-  { label: "Transactions", value: `${adminOverview.turnover} FCFA`, icon: Wallet, bg: "bg-[#F1EEFB]" },
+  { label: "Chiffre d'Affaire", value: `${adminOverview.turnover} FCFA`, icon: Wallet, bg: "bg-[#F1EEFB]" },
 ];
 
 export default function AdminCards() {
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {cards.map(({ label, value, icon: Icon, bg }) => (
         <article key={label} className={`${bg} rounded-lg border border-[#E8DED2] p-6 shadow-sm`}>
           <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-lg bg-[#102D42]/8 text-[#102D42]">

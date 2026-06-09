@@ -11,7 +11,7 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useUserMode } from "../../context/useUserMode";
+import { logout } from "../../services/authService";
 
 const links = [
   { to: "/", label: "Accueil", icon: Home },
@@ -22,7 +22,6 @@ const links = [
 
 export default function MobileMenu({ user, theme = "dark" }) {
   const menuRef = useRef(null);
-  const { setRole } = useUserMode();
   const [open, setOpen] = useState(false);
 
   const close = () => setOpen(false);
@@ -111,8 +110,12 @@ export default function MobileMenu({ user, theme = "dark" }) {
                   Profil
                 </Link>
                 <button
-                  onClick={() => {
-                    setRole("visitor");
+                  onClick={async () => {
+                    try {
+                      await logout();
+                    } catch {
+                      // Le nettoyage local est deja effectue dans le service.
+                    }
                     close();
                   }}
                   className="flex min-h-[52px] w-full items-center gap-3 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-100"

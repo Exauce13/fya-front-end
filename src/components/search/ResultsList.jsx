@@ -1,4 +1,6 @@
 import { CheckCircle2, MapPin, Star } from "lucide-react";
+import { Link } from "react-router-dom";
+import profileAvatar from "../../assets/images/profile-avatar.svg";
 
 export default function ResultsList({ artisans }) {
   return (
@@ -18,20 +20,24 @@ export default function ResultsList({ artisans }) {
         </div>
       ) : (
         <div className="space-y-4">
-        {artisans.map((artisan) => (
-          <article
-            key={artisan.name}
-            className="rounded-lg border border-[#eadfd3] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+        {artisans.map((artisan) => {
+          return (
+          <Link
+            key={artisan.id || artisan.name}
+            to={`/artisans/${artisan.id}`}
+            state={{ artisan }}
+            className="block rounded-lg border border-[#eadfd3] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className="flex gap-5">
               <img
-                src={artisan.image}
+                src={artisan.image || profileAvatar}
                 alt={artisan.name}
                 className="h-24 w-24 shrink-0 rounded-full object-cover"
               />
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-extrabold text-[#182433]">
-                  {artisan.name} <span className="text-[#145DA0]">{artisan.job}</span>
+                  <span className="transition group-hover:text-[#145DA0]">{artisan.name}</span>{" "}
+                  <span className="text-[#145DA0]">{artisan.job}</span>
                 </h2>
                 <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-gray-600">
                   {artisan.category}
@@ -58,8 +64,9 @@ export default function ResultsList({ artisans }) {
                 </div>
               </div>
             </div>
-          </article>
-        ))}
+          </Link>
+          );
+        })}
         </div>
       )}
     </section>

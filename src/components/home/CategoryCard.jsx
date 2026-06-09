@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
+import { BriefcaseBusiness } from "lucide-react";
 import { useUserMode } from "../../context/useUserMode";
 
 const iconClass = "h-10 w-10 rounded-full bg-[#fff6ec] p-2.5 text-[#C96B2C]";
 
 export default function CategoryCard({ category }) {
-  const Icon = category.icon;
+  const Icon = category.icon || BriefcaseBusiness;
   const { isVisitor } = useUserMode();
 
   return (

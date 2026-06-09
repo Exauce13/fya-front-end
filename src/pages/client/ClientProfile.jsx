@@ -1,74 +1,99 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Camera, ClipboardList, Edit3, MapPin, Save, Star, X } from "lucide-react";
+import { Camera, ClipboardList, Edit3, Mail, MapPin, Phone, Save, ShieldCheck, Star, X } from "lucide-react";
 
-import { readStoredOffers, myOffersSeed } from "../../components/offers/offersData";
+import UserNameLink from "../../components/ui/UserNameLink";
 import { useUserMode } from "../../context/useUserMode";
+import profileAvatar from "../../assets/images/profile-avatar.svg";
+import { getApiMessage, getStorageUrl } from "../../services/apiClient";
+import { updatePassword } from "../../services/authService";
+import { updateProfileInformation, updateProfilePhoto } from "../../services/profileService";
 import {
   getPasswordStrength,
   hasPasswordErrors,
   validatePasswordChange,
 } from "../../utils/passwordValidation";
 
-const reviews = [
-  {
-    author: "Hervé A.",
-    rating: "4.8",
-    text: "Client clair dans ses besoins, paiement rapide et échange respectueux.",
-  },
-  {
-    author: "Yao M.",
-    rating: "4.6",
-    text: "Projet bien expliqué, disponibilité correcte pour valider les étapes.",
-  },
-];
+const reviews = [];
 
 export default function ClientProfile() {
   const { user } = useUserMode();
-  const [avatar, setAvatar] = useState(user.avatar);
+  const [avatar, setAvatar] = useState(user?.avatar || profileAvatar);
   const [profile, setProfile] = useState({
-    city: "Cotonou",
-    district: "Fidjrossè",
+    city: user?.ville || "",
+    district: user?.quartier || "",
+    telephone: user?.telephone || "",
+    email: user?.email || "",
+    statut: user?.statut || "",
+    memberSince: user?.created_at ? new Date(user.created_at).getFullYear().toString() : "",
   });
   const [editing, setEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
   const [form, setForm] = useState({
-    city: "Cotonou",
-    district: "Fidjrossè",
+    city: user?.ville || "",
+    district: user?.quartier || "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-  const offersCount = [...readStoredOffers(), ...myOffersSeed].length;
+  const offersCount = user?.appels_offres_count || user?.client?.appels_offres_count || 0;
 
-  const changeAvatar = (file) => {
+  const changeAvatar = async (file) => {
     if (!file) return;
+
+    const formData = new FormData();
+    formData.append("photo", file);
+
     const reader = new FileReader();
     reader.onload = () => setAvatar(reader.result);
     reader.readAsDataURL(file);
+
+    try {
+      const payload = await updateProfilePhoto(formData);
+      const photo = getStorageUrl(payload?.photo_url || payload?.photo || payload?.user?.photo);
+      if (photo) setAvatar(photo);
+    } catch (error) {
+      alert(getApiMessage(error, "Impossible de modifier la photo de profil."));
+    }
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     const passwordValidationErrors = validatePasswordChange(form);
     setPasswordErrors(passwordValidationErrors);
     if (hasPasswordErrors(passwordValidationErrors)) {
       return;
     }
 
-    setProfile({
-      city: form.city.trim() || profile.city,
-      district: form.district.trim() || profile.district,
-    });
-    setForm((current) => ({
-      ...current,
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    }));
-    setShowPasswordForm(false);
-    setEditing(false);
-    setPasswordErrors({});
+    try {
+      if (user?.id) {
+        await updateProfileInformation(user.id, {
+          ville: form.city.trim(),
+          quartier: form.district.trim(),
+        });
+      }
+
+      if (form.currentPassword || form.newPassword || form.confirmPassword) {
+        await updatePassword(form);
+      }
+
+      setProfile((current) => ({
+        ...current,
+        city: form.city.trim() || current.city,
+        district: form.district.trim() || current.district,
+      }));
+      setForm((current) => ({
+        ...current,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      }));
+      setShowPasswordForm(false);
+      setEditing(false);
+      setPasswordErrors({});
+    } catch (error) {
+      alert(getApiMessage(error, "Impossible d'enregistrer les informations."));
+    }
   };
 
   const cancelEdit = () => {
@@ -103,11 +128,11 @@ export default function ClientProfile() {
                 </label>
               </div>
               <div>
-                <h1 className="text-3xl font-extrabold">{user.name}</h1>
+                <h1 className="text-3xl font-extrabold">{user?.name || "Client FYA"}</h1>
                 <p className="mt-1 text-sm font-semibold text-gray-500">Profil client</p>
                 <p className="mt-2 inline-flex items-center gap-2 text-sm font-extrabold text-[#182433]">
                   <MapPin size={16} className="text-[#C96B2C]" />
-                  {profile.city}, {profile.district}
+                  {[profile.city, profile.district].filter(Boolean).join(", ") || "Localisation non renseignée"}
                 </p>
               </div>
             </div>
@@ -216,7 +241,7 @@ export default function ClientProfile() {
             </Link>
             <article className="rounded-lg bg-[#fbfaf8] p-5">
               <Star className="fill-[#F5A623] text-[#F5A623]" />
-              <p className="mt-3 text-2xl font-extrabold">4.7/5</p>
+              <p className="mt-3 text-2xl font-extrabold">{user?.rating || "0/5"}</p>
               <p className="text-sm font-bold text-gray-500">Note moyenne</p>
             </article>
             <article className="rounded-lg bg-[#fbfaf8] p-5">
@@ -224,6 +249,13 @@ export default function ClientProfile() {
               <p className="mt-3 text-2xl font-extrabold">{reviews.length}</p>
               <p className="text-sm font-bold text-gray-500">Avis reçus</p>
             </article>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <InfoItem icon={Phone} label="Téléphone" value={profile.telephone} />
+            <InfoItem icon={Mail} label="Email" value={profile.email} />
+            <InfoItem icon={ShieldCheck} label="Statut" value={profile.statut} />
+            <InfoItem icon={MapPin} label="Membre depuis" value={profile.memberSince} />
           </div>
         </section>
 
@@ -233,7 +265,9 @@ export default function ClientProfile() {
             {reviews.map((review) => (
               <article key={review.author} className="rounded-lg bg-[#fbfaf8] p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-extrabold">{review.author}</h3>
+                  <h3 className="font-extrabold">
+                    <UserNameLink name={review.author}>{review.author}</UserNameLink>
+                  </h3>
                   <span className="inline-flex items-center gap-1 text-sm font-extrabold text-[#C96B2C]">
                     <Star size={15} className="fill-[#C96B2C]" />
                     {review.rating}
@@ -246,6 +280,18 @@ export default function ClientProfile() {
         </section>
       </div>
     </div>
+  );
+}
+
+function InfoItem({ icon: Icon, label, value }) {
+  return (
+    <article className="rounded-lg bg-[#fbfaf8] px-4 py-3">
+      <p className="flex items-center gap-2 text-xs font-extrabold text-gray-400">
+        <Icon size={15} />
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-extrabold text-[#182433]">{value || "Non renseigné"}</p>
+    </article>
   );
 }
 

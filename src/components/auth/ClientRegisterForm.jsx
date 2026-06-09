@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +8,8 @@ import { isValidPhoneNumber } from "react-phone-number-input";
 import { Controller } from "react-hook-form";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
+import { getApiMessage } from "../../services/apiClient";
+import { registerClient } from "../../services/authService";
 
 
 
@@ -27,6 +30,12 @@ const clientSchema = z
     {
       message: "Numéro de téléphone invalide",
     }
+  )
+  .refine(
+    (value) => value.replace(/\s/g, "").replace(/^\+229/, "").replace(/^229/, "").match(/^01[4569]\d{7}$/),
+    {
+      message: "Le numéro doit commencer par 014, 015, 016 ou 019",
+    }
   ),
 
 
@@ -41,6 +50,10 @@ const clientSchema = z
         8,
         "Le mot de passe doit contenir au moins 8 caractères"
       )
+      .max(
+        12,
+        "Le mot de passe ne doit pas dépasser 12 caractères"
+      )
       .regex(
         /[A-Z]/,
         "Le mot de passe doit contenir une majuscule"
@@ -52,6 +65,10 @@ const clientSchema = z
       .regex(
         /\d/,
         "Le mot de passe doit contenir un chiffre"
+      )
+      .regex(
+        /[@$!%*?&_\-#]/,
+        "Le mot de passe doit contenir un caractère spécial"
       ),
 
     confirm_password: z.string(),
@@ -77,6 +94,7 @@ const clientSchema = z
   );
 
 export default function ClientRegisterForm() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] =
     useState(false);
 
@@ -110,23 +128,21 @@ export default function ClientRegisterForm() {
     if (/[A-Z]/.test(password)) score++;
     if (/[a-z]/.test(password)) score++;
     if (/\d/.test(password)) score++;
+    if (/[@$!%*?&_\-#]/.test(password)) score++;
 
-    if (score <= 2) return "Faible";
-    if (score === 3) return "Moyen";
+    if (score <= 3) return "Faible";
+    if (score === 4) return "Moyen";
     return "Fort";
   };
 
   const onSubmit = async (data) => {
     try {
-      console.log(data);
-
-      // Exemple API
-      // await axios.post("/api/client/register", data);
-
-      alert("Inscription réussie !");
+      const response = await registerClient(data);
+      alert(response?.message || "Inscription client effectuee avec succes.");
+      navigate("/", { replace: true });
     } catch (error) {
       console.error(error);
-      alert("Une erreur est survenue.");
+      alert(getApiMessage(error, "Une erreur est survenue pendant l'inscription."));
     }
   };
 

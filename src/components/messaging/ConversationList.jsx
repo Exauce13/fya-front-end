@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import UserNameLink from "../ui/UserNameLink";
 
 export default function ConversationList({ conversations, activeId, onSelect }) {
   return (
@@ -30,7 +31,16 @@ export default function ConversationList({ conversations, activeId, onSelect }) 
             />
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-3">
-                <strong className="truncate text-sm text-[#182433]">{conversation.name}</strong>
+                <strong className="truncate text-sm text-[#182433]">
+                  <UserNameLink
+                    name={conversation.name}
+                    id={conversation.userId}
+                    type={conversation.userType}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {conversation.name}
+                  </UserNameLink>
+                </strong>
                 <span className="text-xs font-semibold text-gray-400">{conversation.time}</span>
               </span>
               <span className="mt-1 block truncate text-xs font-semibold text-gray-500">

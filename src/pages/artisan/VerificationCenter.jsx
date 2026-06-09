@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ArrowLeft, CheckCircle2, CreditCard, FileText, UploadCloud } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getApiMessage } from "../../services/apiClient";
+import { requestCertification } from "../../services/artisanService";
 
 const initialForm = {
   associationName: "",
@@ -17,6 +19,7 @@ export default function VerificationCenter() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [paid, setPaid] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   const updateFile = (field, file) => {
     setForm((current) => ({ ...current, [field]: file || null }));
@@ -53,9 +56,27 @@ export default function VerificationCenter() {
     }
   };
 
-  const payVerification = () => {
-    localStorage.setItem(verificationStatusKey, "pending");
-    setPaid(true);
+  const payVerification = async () => {
+    setApiError("");
+    const formData = new FormData();
+    formData.append("nom_association", form.associationName);
+    formData.append("association_name", form.associationName);
+    formData.append("dirigeant", form.leaderName);
+    formData.append("leader_name", form.leaderName);
+    formData.append("telephone_dirigeant", form.leaderPhone);
+    formData.append("leader_phone", form.leaderPhone);
+    formData.append("montant", "1000");
+    formData.append("cip", form.identityCard);
+    formData.append("carte_identite", form.identityCard);
+    formData.append("diplome", form.diploma);
+
+    try {
+      await requestCertification(formData);
+      localStorage.setItem(verificationStatusKey, "pending");
+      setPaid(true);
+    } catch (error) {
+      setApiError(getApiMessage(error, "Impossible d'envoyer la demande de vérification."));
+    }
   };
 
   return (
@@ -184,6 +205,11 @@ export default function VerificationCenter() {
                       <CreditCard size={18} />
                       Payer maintenant
                     </button>
+                    {apiError && (
+                      <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-600">
+                        {apiError}
+                      </p>
+                    )}
                     <button
                       type="button"
                       onClick={() => setStep("information")}

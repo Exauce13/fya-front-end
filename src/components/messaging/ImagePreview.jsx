@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Check, Mic, Pause, Play } from "lucide-react";
+import profileAvatar from "../../assets/images/profile-avatar.svg";
 
 export default function ImagePreview({ images, onRemove }) {
   if (!images.length) return null;
@@ -84,7 +85,7 @@ function AudioPreview({ media }) {
       <div className="flex items-center gap-3">
         <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-[#d7e3ec]">
           <img
-            src="https://i.pravatar.cc/120?img=12"
+            src={profileAvatar}
             alt=""
             className="h-full w-full object-cover"
           />

@@ -1,7 +1,7 @@
 import SearchFilters, { CheckboxFilter, SelectFilter } from "./SearchFilters";
 import { serviceCategories } from "../../data/serviceCategories";
 
-export default function FilterSidebar({ filters, onFilterChange }) {
+export default function FilterSidebar({ filters, onFilterChange, categories = serviceCategories }) {
   const updateFilter = (field, value) => {
     onFilterChange({ ...filters, [field]: value });
   };
@@ -17,7 +17,7 @@ export default function FilterSidebar({ filters, onFilterChange }) {
           <SelectFilter
             label="Toutes les catégories"
             value={filters.category}
-            options={serviceCategories}
+            options={categories.length ? categories : serviceCategories}
             onChange={(value) => updateFilter("category", value)}
           />
         </SearchFilters>

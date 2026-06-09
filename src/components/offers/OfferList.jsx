@@ -6,6 +6,7 @@ export default function OfferList({
   appliedOfferIds = [],
   onApply,
   onSelect,
+  onPreviewMedia,
 }) {
   return (
     <div>
@@ -14,9 +15,10 @@ export default function OfferList({
           key={offer.id}
           offer={offer}
           mode={mode}
-          applied={appliedOfferIds.includes(offer.id)}
+          applied={appliedOfferIds.some((id) => String(id) === String(offer.id))}
           onApply={onApply}
           onSelect={onSelect}
+          onPreviewMedia={onPreviewMedia}
         />
       ))}
     </div>

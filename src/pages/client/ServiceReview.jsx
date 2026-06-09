@@ -1,29 +1,16 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ImagePlus, Star } from "lucide-react";
 
 import { useUserMode } from "../../context/useUserMode";
-import { conversations, initialConversationServices } from "../../data/conversationsData";
-
-const storageKey = "fya-conversation-services";
 
 export default function ServiceReview() {
-  const { conversationId, serviceId } = useParams();
+  const { conversationId } = useParams();
   const navigate = useNavigate();
   const { isArtisan } = useUserMode();
-  const conversation = conversations.find((item) => String(item.id) === conversationId);
-  const [servicesByConversation, setServicesByConversation] = useState(() => {
-    const saved = localStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : initialConversationServices;
-  });
   const [review, setReview] = useState({ rating: 5, comment: "", images: [] });
   const [error, setError] = useState("");
-
-  const services = useMemo(
-    () => servicesByConversation[conversationId] || [],
-    [conversationId, servicesByConversation]
-  );
-  const service = services.find((item) => item.id === serviceId);
+  const service = null;
   const reviewKey = isArtisan ? "artisanReview" : "clientReview";
   const target = isArtisan ? "le client" : "l'artisan";
   const existingReview = service?.[reviewKey];
@@ -48,30 +35,10 @@ export default function ServiceReview() {
       return;
     }
 
-    const nextServices = services.map((item) => {
-      if (item.id !== serviceId) return item;
-      return {
-        ...item,
-        [reviewKey]: {
-          rating: review.rating,
-          comment: review.comment.trim(),
-          images: review.images,
-          createdAt: new Date().toLocaleDateString("fr-FR"),
-        },
-      };
-    });
-
-    const nextServicesByConversation = {
-      ...servicesByConversation,
-      [conversationId]: nextServices,
-    };
-
-    setServicesByConversation(nextServicesByConversation);
-    localStorage.setItem(storageKey, JSON.stringify(nextServicesByConversation));
     navigate(`/messages/${conversationId}/service`);
   };
 
-  if (!conversation || !service) {
+  if (!service) {
     return (
       <div className="min-h-screen bg-[#F8F5F1] px-4 pt-24">
         <div className="mx-auto max-w-xl rounded-lg bg-white p-6 text-center font-bold">

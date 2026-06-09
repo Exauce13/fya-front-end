@@ -10,6 +10,9 @@ export default function ArtisanHeader({
   onPhotoChange,
   verificationPending,
 }) {
+  const displayName = [artisan.prenom, artisan.nom].filter(Boolean).join(" ") || "Artisan FYA";
+  const subtitle = [artisan.metier, artisan.ville].filter(Boolean).join(" à ");
+
   return (
     <section className="overflow-hidden rounded-xl border border-[#eadfd3] bg-white shadow-sm">
       <div
@@ -26,7 +29,7 @@ export default function ArtisanHeader({
               <div className="relative h-36 w-36 rounded-full border-4 border-white bg-white shadow-lg">
                 <img
                   src={artisan.photo}
-                  alt={`${artisan.prenom} ${artisan.nom}`}
+                  alt={displayName}
                   className="h-full w-full rounded-full object-cover"
                 />
                 {!visitorMode && (
@@ -46,20 +49,22 @@ export default function ArtisanHeader({
             <div className="pt-4 md:pt-5">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-4xl font-extrabold tracking-normal text-[#182433]">
-                  {artisan.prenom} {artisan.nom}
+                  {displayName}
                 </h1>
                 <VerificationBadge verified={artisan.verified} />
               </div>
-              <p className="mt-2 text-base font-extrabold text-[#182433]">
-                {artisan.metier} à {artisan.ville}
-              </p>
+              {subtitle && (
+                <p className="mt-2 text-base font-extrabold text-[#182433]">
+                  {subtitle}
+                </p>
+              )}
               <div className="mt-4 flex flex-wrap items-center gap-4 text-sm font-bold text-gray-600">
                 <span className="inline-flex items-center gap-1 text-[#C96B2C]">
                   <Star size={16} className="fill-[#C96B2C]" />
                   {artisan.rating} ({artisan.reviews} avis)
                 </span>
                 <span>{artisan.services} prestations</span>
-                <span>Membre depuis {artisan.memberSince}</span>
+                {artisan.memberSince && <span>Membre depuis {artisan.memberSince}</span>}
               </div>
             </div>
           </div>

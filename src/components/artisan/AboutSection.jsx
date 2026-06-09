@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BriefcaseBusiness, CalendarClock, Edit3, MapPin, Save, X } from "lucide-react";
+import { BriefcaseBusiness, CalendarClock, Edit3, Mail, MapPin, Phone, Save, ShieldCheck, X } from "lucide-react";
 import { getPasswordStrength } from "../../utils/passwordValidation";
 
 export default function AboutSection({
@@ -16,10 +16,14 @@ export default function AboutSection({
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const passwordStrength = getPasswordStrength(form.newPassword);
   const details = [
+    { icon: BriefcaseBusiness, label: "Métier", value: artisan.metier },
     { icon: MapPin, label: "Ville", value: artisan.ville },
     { icon: MapPin, label: "Quartier", value: artisan.quartier },
-    { icon: CalendarClock, label: "Expérience", value: `${artisan.experience} ans d'expérience` },
+    { icon: CalendarClock, label: "Expérience", value: `${artisan.experience || 0} ans d'expérience` },
     { icon: BriefcaseBusiness, label: "Atelier", value: artisan.atelier },
+    { icon: Phone, label: "Téléphone", value: artisan.telephone },
+    { icon: Mail, label: "Email", value: artisan.email },
+    { icon: ShieldCheck, label: "Statut", value: artisan.statut },
   ];
 
   return (
@@ -61,10 +65,10 @@ export default function AboutSection({
             <Field label="Quartier" value={form.quartier} onChange={(value) => onFormChange({ ...form, quartier: value })} />
             <Field label="Nom de l'atelier" value={form.atelier} onChange={(value) => onFormChange({ ...form, atelier: value })} />
             <Field
-              label="Année de début d'activité"
+              label="Années d'expérience"
               type="number"
-              value={form.startYear}
-              onChange={(value) => onFormChange({ ...form, startYear: value })}
+              value={form.experience}
+              onChange={(value) => onFormChange({ ...form, experience: value })}
             />
           </div>
 
@@ -137,7 +141,9 @@ export default function AboutSection({
         </form>
       ) : (
         <>
-          <p className="mt-4 text-sm font-semibold leading-7 text-gray-600">{artisan.bio}</p>
+          <p className="mt-4 text-sm font-semibold leading-7 text-gray-600">
+            {artisan.bio || "Bio non renseignée."}
+          </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {details.map(({ icon: Icon, label, value }) => (
               <div key={label} className="rounded-lg bg-[#fbfaf8] px-4 py-3">
@@ -145,7 +151,9 @@ export default function AboutSection({
                   <Icon size={15} />
                   {label}
                 </p>
-                <p className="mt-1 text-sm font-extrabold text-[#182433]">{value}</p>
+                <p className="mt-1 text-sm font-extrabold text-[#182433]">
+                  {value || "Non renseigné"}
+                </p>
               </div>
             ))}
           </div>

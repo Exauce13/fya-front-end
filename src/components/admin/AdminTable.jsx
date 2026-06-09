@@ -1,17 +1,13 @@
 const statusStyles = {
   Actif: "bg-[#E8F6EC] text-[#237847]",
   Suspendu: "bg-[#FDECEC] text-[#B42318]",
-  Surveillance: "bg-[#FFF4DF] text-[#A15C00]",
   "En attente": "bg-[#FFF4DF] text-[#A15C00]",
-  "A revoir": "bg-[#F1EEFB] text-[#6049B5]",
   Validé: "bg-[#E8F6EC] text-[#237847]",
+  Annulé: "bg-[#FDECEC] text-[#B42318]",
   Ouvert: "bg-[#E8F6EC] text-[#237847]",
   Terminé: "bg-[#F1F5F9] text-[#475569]",
-  Nouveau: "bg-[#FDECEC] text-[#B42318]",
-  "En cours": "bg-[#EFF6FF] text-[#1F5B87]",
+  Traité: "bg-[#E8F6EC] text-[#237847]",
   Payé: "bg-[#E8F6EC] text-[#237847]",
-  Publié: "bg-[#E8F6EC] text-[#237847]",
-  Masqué: "bg-[#FDECEC] text-[#B42318]",
 };
 
 export function StatusPill({ status }) {
