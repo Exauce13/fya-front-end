@@ -3,8 +3,8 @@ import UserNameLink from "../ui/UserNameLink";
 
 export default function ConversationList({ conversations, activeId, onSelect }) {
   return (
-    <aside className="rounded-l-xl border-r border-[#eadfd3] bg-white">
-      <div className="border-b border-[#eadfd3] p-6">
+    <aside className="flex h-[calc(100vh-7.5rem)] min-h-[620px] flex-col rounded-l-xl border-r border-[#eadfd3] bg-white">
+      <div className="shrink-0 border-b border-[#eadfd3] p-6">
         <h1 className="text-2xl font-extrabold text-[#182433]">Messagerie</h1>
         <label className="mt-6 flex min-h-12 items-center gap-3 rounded-lg border border-[#eadfd3] px-4 text-sm text-gray-500">
           <Search size={18} />
@@ -15,7 +15,7 @@ export default function ConversationList({ conversations, activeId, onSelect }) 
         </label>
       </div>
 
-      <div className="p-3">
+      <div className="flex-1 overflow-y-auto p-3">
         {conversations.map((conversation) => (
           <button
             key={conversation.id}
@@ -34,8 +34,9 @@ export default function ConversationList({ conversations, activeId, onSelect }) 
                 <strong className="truncate text-sm text-[#182433]">
                   <UserNameLink
                     name={conversation.name}
-                    id={conversation.userId}
+                    id={conversation.profileId || conversation.userId}
                     type={conversation.userType}
+                    state={conversation.profileState || { userId: conversation.userId }}
                     onClick={(event) => event.stopPropagation()}
                   >
                     {conversation.name}

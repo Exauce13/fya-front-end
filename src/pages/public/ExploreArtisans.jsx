@@ -8,10 +8,23 @@ import SearchHeader from "../../components/search/SearchHeader";
 import { getMetiers, searchArtisans } from "../../services/artisanService";
 import { getApiMessage, getPaginatedItems, getStorageUrl } from "../../services/apiClient";
 
-const normalizeMetier = (metier) => ({
-  id: metier?.id,
-  name: metier?.nom || metier?.name || "",
+const normalizeMetier = (metier, index = 0) => ({
+  id: metier?.id ?? metier?.metier_id ?? index + 1,
+  name: metier?.nom || metier?.name || metier?.libelle || "",
 });
+
+const normalizeMetierName = (...values) => {
+  for (const value of values) {
+    if (!value) continue;
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+      const name = value.nom || value.name || value.libelle || value.label || value.titre || value.title;
+      if (name) return name;
+    }
+  }
+
+  return "";
+};
 
 const normalizeSearchValue = (value) =>
   String(value || "")
@@ -22,9 +35,10 @@ const normalizeSearchValue = (value) =>
 
 const normalizeArtisan = (artisan) => ({
   id: artisan.id,
+  userId: artisan.user_id || artisan.user?.id,
   name: artisan.name || artisan.user?.name || "Artisan",
-  job: artisan.metier?.nom || artisan.metier_nom || "Artisan",
-  category: artisan.metier?.nom || artisan.metier_nom || "",
+  job: normalizeMetierName(artisan.metier, artisan.user?.metier, artisan.metier_nom, artisan.user?.metier_nom) || "Artisan",
+  category: normalizeMetierName(artisan.metier, artisan.user?.metier, artisan.metier_nom, artisan.user?.metier_nom),
   city: artisan.ville || artisan.user?.ville || "",
   district: artisan.quartier || artisan.user?.quartier || "",
   bio: artisan.bio || "",
@@ -32,7 +46,7 @@ const normalizeArtisan = (artisan) => ({
   telephone: artisan.telephone || artisan.user?.telephone || "",
   email: artisan.email || artisan.user?.email || "",
   statut: artisan.user?.statut || artisan.statut || "",
-  verified: Boolean(artisan.is_certifed || artisan.certifie),
+  verified: Boolean(artisan.is_certifed || artisan.is_certified || artisan.certifie || artisan.verified),
   experience: `${artisan.annees_experiences || 0} an(s) d'expérience`,
   rating: artisan.rating || "0",
   reviews: artisan.reviews || "0",

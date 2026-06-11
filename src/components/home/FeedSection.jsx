@@ -20,29 +20,40 @@ const allowedMediaExtensions = /\.(jpe?g|png|webp|mp4|mov)$/i;
 const resolveCurrentArtisanId = (user) =>
   user?.artisan?.id || user?.artisan_p?.id || user?.artisan_id || user?.artisanP?.id;
 
+const resolveUserAvatar = (user) => getStorageUrl(user?.photo || user?.avatar) || profileAvatar;
+
+const normalizePostType = (post) =>
+  String(post.post_type || post.type || post.postType || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const isServicePost = (post) => ["", "service", "services"].includes(normalizePostType(post));
+
 const normalizePost = (post, currentUser) => {
   const artisan = post.artisan_p || post.artisanP || post.artisan;
-  const fallbackAuthor = currentUser || {};
-  const author = artisan?.user || post.user || fallbackAuthor;
+  const author = artisan?.user || post.user || {};
   const media = post.media_json || post.media || [];
   const likedByCurrentUser =
     Boolean(post.liked_by_current_user || post.is_liked || post.liked) ||
     isPostLiked(currentUser?.id, post.id);
-  const artisanId = artisan?.id || post.artisan_id || author.artisan?.id || resolveCurrentArtisanId(currentUser);
-  const authorPhoto = author.photo || author.avatar || fallbackAuthor.photo || fallbackAuthor.avatar;
+  const artisanId = artisan?.id || post.artisan_id || author.artisan?.id || author.artisan_p?.id;
+  const authorPhoto = author.photo || author.avatar;
 
   return {
     id: post.id,
-    author: author.name || fallbackAuthor.name || "Artisan",
+    author: author.name || "Artisan",
     authorId: artisanId,
     authorType: "artisan",
-    authorState: artisan || fallbackAuthor
+    authorState: artisan || author.id
       ? {
           artisan: {
             id: artisanId,
-            name: author.name || fallbackAuthor.name || "Artisan",
-            job: artisan?.metier?.nom || fallbackAuthor.metier?.nom || fallbackAuthor.metier_nom || fallbackAuthor.trade || "",
-            category: artisan?.metier?.nom || fallbackAuthor.metier?.nom || fallbackAuthor.metier_nom || fallbackAuthor.trade || "",
+            userId: author.id || artisan?.user_id || "",
+            name: author.name || "Artisan",
+            job: artisan?.metier?.nom || "",
+            category: artisan?.metier?.nom || "",
             city: author.ville || "",
             district: author.quartier || "",
             bio: artisan?.bio || "",
@@ -51,8 +62,8 @@ const normalizePost = (post, currentUser) => {
             email: author.email || "",
             statut: author.statut || "",
             image: getStorageUrl(authorPhoto) || profileAvatar,
-            verified: Boolean(artisan?.is_certifed || fallbackAuthor.is_certifed),
-            experience: `${artisan?.annees_experiences || fallbackAuthor.artisan?.annees_experiences || fallbackAuthor.artisan_p?.annees_experiences || 0} an(s) d'expérience`,
+            verified: Boolean(artisan?.is_certifed || artisan?.is_certified),
+            experience: `${artisan?.annees_experiences || 0} an(s) d'expérience`,
           },
         }
       : undefined,
@@ -85,7 +96,11 @@ export default function FeedSection() {
       try {
         const payload = await getFeedPosts();
         if (active) {
-          setPosts(getPaginatedItems(payload).map((post) => normalizePost(post, user)));
+          setPosts(
+            getPaginatedItems(payload)
+              .filter(isServicePost)
+              .map((post) => normalizePost(post, user))
+          );
         }
       } catch {
         if (active) setPosts([]);
@@ -130,7 +145,7 @@ export default function FeedSection() {
     try {
       const payload = await createPost({
         description: text.trim(),
-        postType: "services",
+        postType: "service",
         media: images.map((image) => image.file).filter(Boolean),
       });
       const post = payload?.post
@@ -148,7 +163,7 @@ export default function FeedSection() {
             authorId: resolveCurrentArtisanId(user),
             authorType: "artisan",
             authorState: { artisan: { id: resolveCurrentArtisanId(user), name: user?.name || "Artisan" } },
-            avatar: user?.avatar || profileAvatar,
+            avatar: resolveUserAvatar(user),
             meta: "maintenant",
             text: text.trim(),
             images,
@@ -177,8 +192,11 @@ export default function FeedSection() {
       <div className="mt-4 rounded-none border-y border-[#eadfd3] bg-white p-3 shadow-sm sm:rounded-lg sm:border sm:p-4">
         <div className="flex flex-wrap items-center gap-3">
           <img
-            src={user?.avatar || profileAvatar}
+            src={resolveUserAvatar(user)}
             alt={user?.name || "Profil"}
+            onError={(event) => {
+              event.currentTarget.src = profileAvatar;
+            }}
             className="h-11 w-11 shrink-0 rounded-full object-cover"
           />
           <input

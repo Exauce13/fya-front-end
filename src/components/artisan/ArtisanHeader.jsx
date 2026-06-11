@@ -9,6 +9,7 @@ export default function ArtisanHeader({
   visitorMode,
   onPhotoChange,
   verificationPending,
+  onContact,
 }) {
   const displayName = [artisan.prenom, artisan.nom].filter(Boolean).join(" ") || "Artisan FYA";
   const subtitle = [artisan.metier, artisan.ville].filter(Boolean).join(" à ");
@@ -90,7 +91,11 @@ export default function ArtisanHeader({
               </Link>
             )}
             {visitorMode && (
-              <button className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#145DA0] px-4 text-sm font-extrabold text-white transition hover:bg-[#0f4b82]">
+              <button
+                type="button"
+                onClick={onContact}
+                className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#145DA0] px-4 text-sm font-extrabold text-white transition hover:bg-[#0f4b82]"
+              >
                 <MessageCircle size={17} />
                 Contacter
               </button>

@@ -145,8 +145,11 @@ export default function PostDetails() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <img
-                src={post.avatar}
+                src={post.avatar || profileAvatar}
                 alt={post.author}
+                onError={(event) => {
+                  event.currentTarget.src = profileAvatar;
+                }}
                 className="h-12 w-12 rounded-full object-cover"
               />
               <div>
@@ -218,6 +221,9 @@ export default function PostDetails() {
           <form onSubmit={addComment} className="mt-4 flex gap-3">
             <img
               src={user?.avatar || profileAvatar}
+              onError={(event) => {
+                event.currentTarget.src = profileAvatar;
+              }}
               alt={user?.name || "Utilisateur"}
               className="h-11 w-11 rounded-full object-cover"
             />
@@ -242,8 +248,11 @@ export default function PostDetails() {
             {comments.map((comment) => (
               <article key={comment.id} className="flex gap-3">
                 <img
-                  src={comment.avatar}
+                  src={comment.avatar || profileAvatar}
                   alt={comment.author}
+                  onError={(event) => {
+                    event.currentTarget.src = profileAvatar;
+                  }}
                   className="h-10 w-10 rounded-full object-cover"
                 />
                 <div className="flex-1 rounded-lg bg-[#fbfaf8] px-4 py-3">

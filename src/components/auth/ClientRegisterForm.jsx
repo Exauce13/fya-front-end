@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -102,6 +102,7 @@ export default function ClientRegisterForm() {
     showConfirmPassword,
     setShowConfirmPassword,
   ] = useState(false);
+  const submitLockedRef = useRef(false);
 
   const {
     register,
@@ -136,12 +137,16 @@ export default function ClientRegisterForm() {
   };
 
   const onSubmit = async (data) => {
+    if (submitLockedRef.current) return;
+    submitLockedRef.current = true;
+
     try {
       const response = await registerClient(data);
       alert(response?.message || "Inscription client effectuee avec succes.");
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     } catch (error) {
       console.error(error);
+      submitLockedRef.current = false;
       alert(getApiMessage(error, "Une erreur est survenue pendant l'inscription."));
     }
   };

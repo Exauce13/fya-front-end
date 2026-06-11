@@ -1,15 +1,43 @@
 import { Flag, Star } from "lucide-react";
 import { useState } from "react";
 import UserNameLink from "../ui/UserNameLink";
+import { createComplaint } from "../../services/adminService";
+import { getApiMessage } from "../../services/apiClient";
 
-export default function ReviewSection({ reviews, rating, canReport = false }) {
+export default function ReviewSection({
+  reviews,
+  rating,
+  canReport = false,
+  targetId,
+  targetType = "user",
+  targetUserId,
+}) {
   const [showReportForm, setShowReportForm] = useState(false);
   const [report, setReport] = useState({ reason: "", description: "" });
 
-  const submitReport = (event) => {
+  const submitReport = async (event) => {
     event.preventDefault();
-    setReport({ reason: "", description: "" });
-    setShowReportForm(false);
+    const reportedUserId = targetUserId || (targetType === "user" ? targetId : "");
+
+    if (!reportedUserId) {
+      alert("Impossible d'identifier l'utilisateur à signaler pour le moment.");
+      return;
+    }
+
+    try {
+      await createComplaint({
+        reason: report.reason,
+        description: report.description.trim(),
+        target: targetType,
+        targetId,
+        reportedUserId,
+      });
+      setReport({ reason: "", description: "" });
+      setShowReportForm(false);
+      alert("Signalement envoyé.");
+    } catch (error) {
+      alert(getApiMessage(error, "Impossible d'envoyer le signalement."));
+    }
   };
 
   return (

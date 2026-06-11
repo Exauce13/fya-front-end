@@ -1,13 +1,15 @@
 import { BadgeCheck, Users, Wallet } from "lucide-react";
-import { adminOverview } from "../../data/adminData";
 
-const cards = [
-  { label: "Utilisateurs", value: adminOverview.users, icon: Users, bg: "bg-white" },
-  { label: "Artisans", value: adminOverview.artisans, icon: BadgeCheck, bg: "bg-[#EFF8F0]" },
-  { label: "Chiffre d'Affaire", value: `${adminOverview.turnover} FCFA`, icon: Wallet, bg: "bg-[#F1EEFB]" },
-];
+const formatNumber = (value) =>
+  Number(value || 0).toLocaleString("fr-FR");
 
-export default function AdminCards() {
+export default function AdminCards({ stats = {} }) {
+  const cards = [
+    { label: "Utilisateurs", value: formatNumber(stats.users), icon: Users, bg: "bg-white" },
+    { label: "Artisans", value: formatNumber(stats.artisans), icon: BadgeCheck, bg: "bg-[#EFF8F0]" },
+    { label: "Chiffre d'Affaire", value: `${formatNumber(stats.turnover)} FCFA`, icon: Wallet, bg: "bg-[#F1EEFB]" },
+  ];
+
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {cards.map(({ label, value, icon: Icon, bg }) => (

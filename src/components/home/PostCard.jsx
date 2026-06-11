@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Heart, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, MessageCircle, X } from "lucide-react";
 
 import { getPostUrl } from "../../data/postsData";
 import { useUserMode } from "../../context/useUserMode";
@@ -8,6 +8,7 @@ import UserNameLink from "../ui/UserNameLink";
 import { createComment, likePost } from "../../services/postsService";
 import { setPostLiked } from "../../utils/likedPostsStorage";
 import { getApiMessage } from "../../services/apiClient";
+import profileAvatar from "../../assets/images/profile-avatar.svg";
 
 export default function PostCard({ post, onPostUpdate }) {
   const [localReaction, setLocalReaction] = useState(null);
@@ -15,6 +16,7 @@ export default function PostCard({ post, onPostUpdate }) {
   const [commentsCount, setCommentsCount] = useState(Number(post?.comments || 0));
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [commentText, setCommentText] = useState("");
+  const [activeMediaIndex, setActiveMediaIndex] = useState(null);
   const { isVisitor, user } = useUserMode();
   const navigate = useNavigate();
 
@@ -23,6 +25,7 @@ export default function PostCard({ post, onPostUpdate }) {
   const data = post;
   const displayedLiked = localReaction?.liked ?? Boolean(data.likedByCurrentUser);
   const displayedLikes = localReaction?.count ?? Number(data.likes || 0);
+  const activeMedia = activeMediaIndex === null ? null : data.images[activeMediaIndex];
 
   const openCommentForm = () => {
     if (isVisitor) {
@@ -94,8 +97,11 @@ export default function PostCard({ post, onPostUpdate }) {
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <img
-            src={data.avatar}
+            src={data.avatar || profileAvatar}
             alt={data.author}
+            onError={(event) => {
+              event.currentTarget.src = profileAvatar;
+            }}
             className="h-12 w-12 rounded-full object-cover"
           />
           <div>
@@ -116,20 +122,10 @@ export default function PostCard({ post, onPostUpdate }) {
       </div>
       <p className="mt-4 text-sm leading-6 text-gray-700">{data.text}</p>
       {data.images.length > 0 && (
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          {data.images.map((image) => (
-            image.type === "video" ? (
-              <video key={image.src} src={image.src} controls className="w-full rounded-md" />
-            ) : (
-              <img
-                key={image.src}
-                src={image.src}
-                alt={image.name}
-                className="w-full rounded-md"
-              />
-            )
-          ))}
-        </div>
+        <PostMediaGrid
+          images={data.images}
+          onOpenImage={(index) => setActiveMediaIndex(index)}
+        />
       )}
       <div className="mt-4 flex items-center justify-between border-b border-[#eee3d7] pb-3 text-xs font-semibold text-gray-500">
         <span className="flex items-center gap-3">
@@ -194,6 +190,182 @@ export default function PostCard({ post, onPostUpdate }) {
           </div>
         </form>
       )}
+
+      {activeMedia && (
+        <MediaLightbox
+          media={activeMedia}
+          currentIndex={activeMediaIndex}
+          total={data.images.length}
+          onClose={() => setActiveMediaIndex(null)}
+          onPrevious={() =>
+            setActiveMediaIndex((current) => (current === 0 ? data.images.length - 1 : current - 1))
+          }
+          onNext={() =>
+            setActiveMediaIndex((current) => (current === data.images.length - 1 ? 0 : current + 1))
+          }
+        />
+      )}
     </article>
+  );
+}
+
+function PostMediaGrid({ images, onOpenImage }) {
+  const visibleImages = images.slice(0, 4);
+  const remainingCount = Math.max(images.length - visibleImages.length, 0);
+  const count = images.length;
+
+  if (count === 1) {
+    return (
+      <div className="mt-4 overflow-hidden rounded-lg border border-[#eadfd3] bg-[#f6f2ed]">
+        <MediaTile
+          image={images[0]}
+          index={0}
+          onOpenImage={onOpenImage}
+          className="max-h-[420px] w-full sm:max-h-[560px]"
+          mediaClassName="max-h-[420px] w-full object-contain sm:max-h-[560px]"
+        />
+      </div>
+    );
+  }
+
+  const gridClass =
+    count === 2
+      ? "grid-cols-2"
+      : "grid-cols-2 grid-rows-2";
+  const containerClass =
+    count === 2
+      ? "h-[260px] sm:h-[360px]"
+      : "h-[340px] sm:h-[440px]";
+
+  return (
+    <div className={`mt-4 grid ${containerClass} ${gridClass} gap-1 overflow-hidden rounded-lg border border-[#eadfd3] bg-[#eadfd3]`}>
+      {visibleImages.map((image, index) => {
+        const isHero = count === 3 && index === 0;
+
+        return (
+          <MediaTile
+            key={`${image.src}-${index}`}
+            image={image}
+            index={index}
+            onOpenImage={onOpenImage}
+            overlayCount={index === visibleImages.length - 1 ? remainingCount : 0}
+            className={isHero ? "row-span-2" : ""}
+            mediaClassName="h-full w-full object-cover"
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function MediaTile({
+  image,
+  index,
+  onOpenImage,
+  overlayCount = 0,
+  className = "",
+  mediaClassName = "",
+}) {
+  if (image.type === "video") {
+    return (
+      <div className={`relative min-h-0 bg-black ${className}`}>
+        <video
+          src={image.src}
+          controls
+          className={mediaClassName || "h-full w-full object-cover"}
+        />
+        {overlayCount > 0 && <MediaOverlay count={overlayCount} />}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpenImage(index)}
+      className={`group relative min-h-0 bg-[#f6f2ed] ${className}`}
+      aria-label="Agrandir la photo"
+    >
+      <img
+        src={image.src}
+        alt={image.name}
+        className={`${mediaClassName} transition duration-200 group-hover:scale-[1.015]`}
+      />
+      {overlayCount > 0 && <MediaOverlay count={overlayCount} />}
+    </button>
+  );
+}
+
+function MediaOverlay({ count }) {
+  return (
+    <span className="absolute inset-0 grid place-items-center bg-[#182433]/60 text-3xl font-extrabold text-white">
+      +{count}
+    </span>
+  );
+}
+
+function MediaLightbox({
+  media,
+  currentIndex,
+  total,
+  onClose,
+  onPrevious,
+  onNext,
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-[#111827]/85 p-3 sm:p-6">
+      <div className="relative flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-[#fbfaf8] shadow-2xl">
+        <header className="flex items-center justify-between gap-3 border-b border-[#eadfd3] bg-white px-4 py-3">
+          <p className="truncate text-sm font-extrabold text-[#182433]">
+            {currentIndex + 1} / {total} {media.name ? `- ${media.name}` : ""}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#eadfd3] text-gray-600 transition hover:bg-[#fbfaf8]"
+            aria-label="Fermer"
+          >
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="relative grid min-h-0 flex-1 place-items-center bg-[#f6f2ed] p-3 sm:p-5">
+          {media.type === "video" ? (
+            <video
+              src={media.src}
+              controls
+              className="max-h-full max-w-full rounded-lg bg-black object-contain shadow-sm"
+            />
+          ) : (
+            <img
+              src={media.src}
+              alt={media.name}
+              className="max-h-full max-w-full rounded-lg bg-white object-contain shadow-sm"
+            />
+          )}
+
+          {total > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={onPrevious}
+                className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-[#182433] shadow-md transition hover:bg-white"
+                aria-label="Media precedent"
+              >
+                <ChevronLeft size={21} />
+              </button>
+              <button
+                type="button"
+                onClick={onNext}
+                className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/95 text-[#182433] shadow-md transition hover:bg-white"
+                aria-label="Media suivant"
+              >
+                <ChevronRight size={21} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

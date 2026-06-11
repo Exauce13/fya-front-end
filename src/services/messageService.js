@@ -5,6 +5,18 @@ export async function getConversations() {
   return getApiData(response);
 }
 
+export async function createConversation({ participantId, title = "", type = "private" }) {
+  const response = await apiClient.post("/messagerie/conversations", {
+    destinataire_id: participantId,
+    participant_id: participantId,
+    user_id: participantId,
+    title,
+    type,
+  });
+
+  return getApiData(response);
+}
+
 export async function getConversationMessages(conversationId) {
   const response = await apiClient.get(`/messagerie/conversations/${conversationId}/messages`);
   return getApiData(response);

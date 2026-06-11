@@ -1,8 +1,17 @@
 import { CheckCircle2, MapPin, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import profileAvatar from "../../assets/images/profile-avatar.svg";
+import { useUserMode } from "../../context/useUserMode";
+
+const sameId = (first, second) => {
+  if (!first || !second) return false;
+  return String(first) === String(second);
+};
 
 export default function ResultsList({ artisans }) {
+  const { user } = useUserMode();
+  const ownArtisanId = user?.artisan?.id || user?.artisan_p?.id || user?.artisan_id || user?.artisanP?.id;
+
   return (
     <section>
       <div className="mb-4">
@@ -21,17 +30,22 @@ export default function ResultsList({ artisans }) {
       ) : (
         <div className="space-y-4">
         {artisans.map((artisan) => {
+          const isOwnProfile = sameId(artisan.userId, user?.id) || sameId(artisan.id, ownArtisanId);
+
           return (
           <Link
             key={artisan.id || artisan.name}
-            to={`/artisans/${artisan.id}`}
-            state={{ artisan }}
+            to={isOwnProfile ? "/profile" : `/artisans/${artisan.id}`}
+            state={isOwnProfile ? undefined : { artisan }}
             className="block rounded-lg border border-[#eadfd3] bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className="flex gap-5">
               <img
                 src={artisan.image || profileAvatar}
                 alt={artisan.name}
+                onError={(event) => {
+                  event.currentTarget.src = profileAvatar;
+                }}
                 className="h-24 w-24 shrink-0 rounded-full object-cover"
               />
               <div className="min-w-0 flex-1">

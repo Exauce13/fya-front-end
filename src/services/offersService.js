@@ -153,6 +153,7 @@ export const normalizeOffer = (offer = {}, owner = false) => {
         ? {
             artisan: {
               id: item.artisan.id,
+              userId: item.artisan?.user_id || item.artisan?.user?.id || "",
               name: item.artisan?.user?.name || item.artisan?.name || "Artisan",
               job: offer.metier?.nom || "",
               category: offer.metier?.nom || "",

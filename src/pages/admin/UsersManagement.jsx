@@ -1,20 +1,63 @@
 import { Ban, Eye } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import AdminTable, { StatusPill } from "../../components/admin/AdminTable";
-import { adminUsers } from "../../data/adminData";
+import { activateAdminUser, getAdminUsers, suspendAdminUser } from "../../services/adminService";
+import { getApiMessage, getPaginatedItems, getStorageUrl } from "../../services/apiClient";
+
+const normalizeUser = (user) => ({
+  id: user.id || user.reference,
+  name: user.name || user.nom || "Utilisateur",
+  role: user.role || user.statut || "Client",
+  city: user.city || user.ville || "",
+  status: user.status || user.statut_compte || user.account_status || "Actif",
+  joined: user.joined || (user.created_at ? new Date(user.created_at).toLocaleDateString("fr-FR") : ""),
+  avatar: getStorageUrl(user.avatar || user.photo),
+});
 
 export default function UsersManagement() {
   const [filters, setFilters] = useState({ q: "", role: "", status: "" });
-  const filteredUsers = useMemo(() => {
-    return adminUsers.filter((user) => {
-      const query = filters.q.toLowerCase().trim();
-      const matchQuery = query ? `${user.name} ${user.city} ${user.id}`.toLowerCase().includes(query) : true;
-      const matchRole = filters.role ? user.role === filters.role : true;
-      const matchStatus = filters.status ? user.status === filters.status : true;
-      return matchQuery && matchRole && matchStatus;
-    });
+  const [users, setUsers] = useState([]);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUsers() {
+      try {
+        const payload = await getAdminUsers(filters);
+        if (active) {
+          setUsers(getPaginatedItems(payload).map(normalizeUser));
+          setMessage("");
+        }
+      } catch (error) {
+        if (active) {
+          setUsers([]);
+          setMessage(getApiMessage(error, "Impossible de charger les utilisateurs."));
+        }
+      }
+    }
+
+    loadUsers();
+
+    return () => {
+      active = false;
+    };
   }, [filters]);
+
+  const toggleStatus = async (user) => {
+    const suspended = String(user.status).toLowerCase().includes("suspend");
+    try {
+      await (suspended ? activateAdminUser(user.id) : suspendAdminUser(user.id));
+      setUsers((current) =>
+        current.map((item) =>
+          item.id === user.id ? { ...item, status: suspended ? "Actif" : "Suspendu" } : item
+        )
+      );
+    } catch (error) {
+      alert(getApiMessage(error, "Action impossible sur cet utilisateur."));
+    }
+  };
 
   return (
     <div>
@@ -22,9 +65,10 @@ export default function UsersManagement() {
         title="Utilisateurs"
         description="Suivi des comptes actifs ou suspendus."
       />
+      {message && <p className="mb-4 rounded-lg border border-[#F0C5C0] bg-white p-4 text-sm font-bold text-[#B42318]">{message}</p>}
       <Filters filters={filters} onChange={setFilters} />
       <AdminTable
-        rows={filteredUsers}
+        rows={users}
         columns={[
           {
             key: "name",
@@ -44,10 +88,10 @@ export default function UsersManagement() {
           { key: "joined", label: "Inscription" },
           { key: "status", label: "Statut", render: (row) => <StatusPill status={row.status} /> },
         ]}
-        actions={() => (
+        actions={(row) => (
           <div className="flex gap-2">
             <button className="rounded-lg border border-[#D7CABD] p-2 text-[#102D42]" title="Voir le compte"><Eye size={17} /></button>
-            <button className="rounded-lg border border-[#F0C5C0] p-2 text-[#B42318]" title="Suspendre"><Ban size={17} /></button>
+            <button onClick={() => toggleStatus(row)} className="rounded-lg border border-[#F0C5C0] p-2 text-[#B42318]" title="Suspendre"><Ban size={17} /></button>
           </div>
         )}
       />

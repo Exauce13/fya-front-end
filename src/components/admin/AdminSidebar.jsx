@@ -5,7 +5,6 @@ import {
   FileText,
   Flag,
   Home,
-  ShieldCheck,
   Users,
 } from "lucide-react";
 import logo from "../../assets/images/logo.webp";
@@ -47,17 +46,6 @@ export default function AdminSidebar({ mobile = false, onNavigate }) {
         ))}
       </nav>
 
-      <div className="absolute bottom-7 left-5 right-5 rounded-lg border border-white/10 bg-white/7 p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#D96822]">
-            <ShieldCheck size={20} />
-          </div>
-          <div>
-            <p className="text-sm font-bold">Console admin</p>
-            <p className="text-xs text-white/65">Mode démonstration</p>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

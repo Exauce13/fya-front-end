@@ -1,9 +1,21 @@
 import apiClient, { getApiData } from "./apiClient";
 
-const buildPostFormData = ({ description = "", postType = "services", media = [] }) => {
+const normalizePostType = (postType) => {
+  const value = String(postType || "service")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  if (value === "realisations") return "realisation";
+  if (value === "services") return "service";
+  return value || "service";
+};
+
+const buildPostFormData = ({ description = "", postType = "service", media = [] }) => {
   const formData = new FormData();
   formData.append("description", description);
-  formData.append("post_type", postType);
+  formData.append("post_type", normalizePostType(postType));
 
   media.forEach((file) => {
     formData.append("media_json[]", file, file.name);

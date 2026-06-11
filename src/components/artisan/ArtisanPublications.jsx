@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ImagePlus } from "lucide-react";
 
 import PostCard from "../home/PostCard";
-import { getArtisanPosts } from "../../services/artisanService";
+import { getArtisanPosts, getFeedPosts } from "../../services/artisanService";
 import { createPost } from "../../services/postsService";
 import { getApiMessage, getStorageUrl } from "../../services/apiClient";
 import { useUserMode } from "../../context/useUserMode";
@@ -19,13 +19,40 @@ const allowedMediaExtensions = /\.(jpe?g|png|webp|mp4|mov)$/i;
 
 const getPostItems = (payload) => {
   if (Array.isArray(payload?.posts?.data)) return payload.posts.data;
+  if (Array.isArray(payload?.posts)) return payload.posts;
   if (Array.isArray(payload?.data?.posts?.data)) return payload.data.posts.data;
+  if (Array.isArray(payload?.data?.posts)) return payload.data.posts;
   if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.postes?.data)) return payload.postes.data;
+  if (Array.isArray(payload?.postes)) return payload.postes;
+  if (Array.isArray(payload?.data?.postes?.data)) return payload.data.postes.data;
+  if (Array.isArray(payload?.data?.postes)) return payload.data.postes;
   if (Array.isArray(payload)) return payload;
   return [];
 };
 
-const isRealizationPost = (post) => /r[eé]alisation/i.test(String(post.post_type || post.type || ""));
+const normalizePostType = (post) =>
+  String(post.post_type || post.type || post.postType || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const isRealizationPost = (post) => ["realisation", "realisations"].includes(normalizePostType(post));
+
+const isServicePost = (post) => ["service", "services", ""].includes(normalizePostType(post));
+
+const postBelongsToArtisan = (post, artisan) => {
+  const backendArtisan = post.artisan_p || post.artisanP || post.artisan || {};
+  const author = backendArtisan.user || post.user || {};
+  const postArtisanId = backendArtisan.id || post.artisan_id || post.artisan_p_id || post.artisanP_id;
+  const postUserId = author.id || post.user_id || backendArtisan.user_id;
+
+  return (
+    String(postArtisanId || "") === String(artisan.id || "") ||
+    (artisan.userId && String(postUserId || "") === String(artisan.userId))
+  );
+};
 
 const normalizePost = (post, artisan, currentUser) => {
   const backendArtisan = post.artisan_p || post.artisanP || post.artisan || {};
@@ -42,6 +69,7 @@ const normalizePost = (post, artisan, currentUser) => {
     authorState: {
       artisan: {
         id: artisanId,
+        userId: author.id || backendArtisan.user_id || artisan.userId || "",
         name: author.name || `${artisan.prenom} ${artisan.nom}`.trim() || "Artisan",
         job: backendArtisan.metier?.nom || artisan.metier || "",
         category: backendArtisan.metier?.nom || artisan.metier || "",
@@ -94,7 +122,7 @@ const normalizeCreatedPost = (payload, artisan, fallbackImages, fallbackText) =>
     authorId: artisan.id,
     authorType: "artisan",
     authorState: { artisan },
-    avatar: artisan.photo,
+    avatar: artisan.photo || profileAvatar,
     meta: post?.created_at ? new Date(post.created_at).toLocaleDateString("fr-FR") : "maintenant",
     text: post?.description || fallbackText,
     images: media.map((item) => {
@@ -126,17 +154,36 @@ export default function ArtisanPublications({ artisan, initialPosts, visitorMode
     let active = true;
 
     async function loadArtisanPosts() {
+      const loadFromFeed = async () => {
+        const payload = await getFeedPosts();
+        return getPostItems(payload)
+          .filter((post) => postBelongsToArtisan(post, artisan))
+          .filter((post) => isServicePost(post) && !isRealizationPost(post))
+          .map((post) => normalizePost(post, artisan, user));
+      };
+
       setLoading(true);
       try {
         const payload = await getArtisanPosts(artisan.id);
         if (active) {
-          const nextPosts = getPostItems(payload)
-            .filter((post) => !isRealizationPost(post))
+          let nextPosts = getPostItems(payload)
+            .filter((post) => isServicePost(post) && !isRealizationPost(post))
             .map((post) => normalizePost(post, artisan, user));
+          if (nextPosts.length === 0) {
+            nextPosts = await loadFromFeed();
+          }
+          if (!active) return;
           setPosts(nextPosts);
         }
       } catch {
-        if (active) setPosts(initialPosts);
+        try {
+          const nextPosts = await loadFromFeed();
+          if (active) {
+            setPosts(nextPosts);
+          }
+        } catch {
+          if (active) setPosts(initialPosts);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -178,7 +225,7 @@ export default function ArtisanPublications({ artisan, initialPosts, visitorMode
     try {
       const payload = await createPost({
         description: text.trim(),
-        postType: "services",
+        postType: "service",
         media: images.map((image) => image.file).filter(Boolean),
       });
       const nextPost = payload?.post
@@ -218,8 +265,11 @@ export default function ArtisanPublications({ artisan, initialPosts, visitorMode
         <div className="mt-5 rounded-lg border border-[#eadfd3] bg-[#fbfaf8] p-3 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <img
-              src={artisan.photo}
+              src={artisan.photo || profileAvatar}
               alt={`${artisan.prenom} ${artisan.nom}`}
+              onError={(event) => {
+                event.currentTarget.src = profileAvatar;
+              }}
               className="h-12 w-12 shrink-0 rounded-full object-cover"
             />
             <input

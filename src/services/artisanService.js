@@ -1,8 +1,23 @@
 import apiClient, { authStorage, getApiData, publicApiClient } from "./apiClient";
+import { serviceCategories } from "../data/serviceCategories";
+
+const fallbackMetiers = serviceCategories.map((name, index) => ({
+  id: index + 1,
+  nom: name,
+  name,
+}));
 
 export async function getMetiers() {
-  const response = await publicApiClient.get("/metiers");
-  return getApiData(response);
+  try {
+    const response = await publicApiClient.get("/metiers");
+    return getApiData(response);
+  } catch {
+    return {
+      success: false,
+      metiers: fallbackMetiers,
+      fallback: true,
+    };
+  }
 }
 
 export async function searchArtisans(params = {}) {

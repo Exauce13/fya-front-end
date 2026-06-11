@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MessageSquare, Rows3, Star } from "lucide-react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import AboutSection from "../../components/artisan/AboutSection";
 import ArtisanHeader from "../../components/artisan/ArtisanHeader";
@@ -9,8 +9,8 @@ import PortfolioGallery from "../../components/artisan/PortfolioGallery";
 import ReviewSection from "../../components/artisan/ReviewSection";
 import { artisans, homeAssets } from "../../components/home/homeData";
 import { useUserMode } from "../../context/useUserMode";
-import { getApiMessage, getStorageUrl } from "../../services/apiClient";
-import { getArtisanAvis, getArtisanPosts } from "../../services/artisanService";
+import { getApiMessage, getPaginatedItems, getStorageUrl } from "../../services/apiClient";
+import { getArtisanAvis, getArtisanPosts, getMetiers, searchArtisans } from "../../services/artisanService";
 import { updatePassword } from "../../services/authService";
 import { createPost } from "../../services/postsService";
 import { updateProfileInformation, updateProfilePhoto as uploadProfilePhoto } from "../../services/profileService";
@@ -22,6 +22,7 @@ import {
 
 const defaultArtisan = {
   id: "",
+  userId: "",
   nom: "",
   prenom: "Artisan FYA",
   metier: "",
@@ -56,22 +57,81 @@ const allowedRealizationExtensions = /\.(jpe?g|png|webp)$/i;
 
 const getPostItems = (payload) => {
   if (Array.isArray(payload?.posts?.data)) return payload.posts.data;
+  if (Array.isArray(payload?.posts)) return payload.posts;
   if (Array.isArray(payload?.data?.posts?.data)) return payload.data.posts.data;
+  if (Array.isArray(payload?.data?.posts)) return payload.data.posts;
   if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.postes?.data)) return payload.postes.data;
+  if (Array.isArray(payload?.postes)) return payload.postes;
+  if (Array.isArray(payload?.data?.postes?.data)) return payload.data.postes.data;
+  if (Array.isArray(payload?.data?.postes)) return payload.data.postes;
   if (Array.isArray(payload)) return payload;
   return [];
 };
 
-const isRealizationPost = (post) => /r[eé]alisation/i.test(String(post.post_type || post.type || ""));
+const normalizePostType = (post) =>
+  String(post.post_type || post.type || post.postType || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const isRealizationPost = (post) => ["realisation", "realisations"].includes(normalizePostType(post));
+
+const normalizeMetierName = (...values) => {
+  for (const value of values) {
+    if (!value) continue;
+    if (typeof value === "string") return value;
+    if (typeof value === "object") {
+      const name =
+        value.nom ||
+        value.name ||
+        value.libelle ||
+        value.label ||
+        value.titre ||
+        value.title;
+      if (name) return name;
+    }
+  }
+
+  return "";
+};
+
+const getMetierId = (...values) => {
+  for (const value of values) {
+    if (!value) continue;
+    if (typeof value === "object" && value.id) return value.id;
+    if (typeof value === "number" || /^\d+$/.test(String(value))) return value;
+  }
+
+  return "";
+};
+
+const asMediaArray = (media) => {
+  if (!media) return [];
+  if (Array.isArray(media)) return media;
+
+  if (typeof media === "string") {
+    try {
+      const parsed = JSON.parse(media);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      return [media];
+    }
+  }
+
+  return [media];
+};
 
 const normalizeRealizationImages = (posts) =>
   posts
     .filter(isRealizationPost)
-    .flatMap((post) => post.media_json || post.media_urls || post.media || [])
+    .flatMap((post) => asMediaArray(post.media_json || post.media_urls || post.media))
     .map((path) => {
-      const value = String(path).replace(/^\/?storage\/?/, "");
+      const source = path?.src || path?.url || path?.path || path;
+      const value = String(source).replace(/^\/?storage\/?/, "");
       return {
-        src: getStorageUrl(path),
+        src: path?.src || getStorageUrl(source),
         name: value.split("/").pop() || "realisation",
       };
     });
@@ -83,8 +143,9 @@ const normalizeVisitedArtisan = (artisan = {}, fallbackId = "") => {
 
   return {
     id: raw.id || artisan.id || fallbackId,
+    userId: artisan.userId || raw.user_id || user.id || "",
     name: artisan.name || user.name || raw.name || "",
-    metier: raw.metier?.nom || artisan.job || artisan.category || raw.metier_nom || "",
+    metier: normalizeMetierName(raw.metier, user.metier, artisan.job, artisan.category, raw.metier_nom, user.metier_nom),
     ville: artisan.city || raw.ville || user.ville || "",
     quartier: artisan.district || raw.quartier || user.quartier || "",
     atelier: artisan.workshop || raw.nom_atelier || raw.nom_association || "",
@@ -100,39 +161,95 @@ const normalizeVisitedArtisan = (artisan = {}, fallbackId = "") => {
   };
 };
 
-const normalizeBackendArtisan = (backendArtisan = {}) => {
+const normalizeBackendArtisan = (backendArtisan = {}, metiersById = {}) => {
   const user = backendArtisan.user || {};
+  const metier = backendArtisan.metier || user.metier || {};
+  const metierId = getMetierId(metier, backendArtisan.metier_id, user.metier_id);
 
   return {
-    id: backendArtisan.id,
-    prenom: user.name || "Artisan FYA",
-    metier: backendArtisan.metier?.nom || "",
-    ville: user.ville || backendArtisan.ville || "",
-    quartier: user.quartier || backendArtisan.quartier || "",
-    atelier: backendArtisan.nom_atelier || backendArtisan.nom_association || "",
+    id: backendArtisan.id || backendArtisan.artisan_id || "",
+    userId: backendArtisan.user_id || user.id || "",
+    prenom: user.name || backendArtisan.name || backendArtisan.nom || "Artisan FYA",
+    metier:
+      normalizeMetierName(metier, backendArtisan.metier_nom, user.metier_nom, backendArtisan.job, backendArtisan.category) ||
+      metiersById[String(metierId)] ||
+      "",
+    ville: user.ville || backendArtisan.ville || backendArtisan.city || "",
+    quartier: user.quartier || backendArtisan.quartier || backendArtisan.district || "",
+    atelier: backendArtisan.nom_atelier || backendArtisan.nom_association || backendArtisan.atelier || backendArtisan.workshop || "",
     experience: Number(backendArtisan.annees_experiences || 0),
-    bio: backendArtisan.bio || "",
-    photo: getStorageUrl(user.photo) || profileAvatar,
+    bio: backendArtisan.bio || user.bio || "",
+    photo: getStorageUrl(user.photo || backendArtisan.photo) || profileAvatar,
     verified: Boolean(backendArtisan.is_certifed || backendArtisan.is_certified),
-    email: user.email || "",
-    telephone: user.telephone || "",
-    statut: user.statut || "",
+    email: user.email || backendArtisan.email || "",
+    telephone: user.telephone || backendArtisan.telephone || "",
+    statut: user.statut || backendArtisan.statut || "",
   };
 };
+
+const hasMeaningfulValue = (value) => value !== "" && value !== null && value !== undefined;
+
+const mergeMeaningfulProfile = (current, next) => ({
+  ...current,
+  ...Object.fromEntries(
+    Object.entries(next).filter(([key, value]) => {
+      if (!hasMeaningfulValue(value)) return false;
+      if (["experience", "reviews", "services"].includes(key) && Number(value) === 0 && Number(current[key]) > 0) {
+        return false;
+      }
+      if (key === "rating" && String(value) === "0/5" && current.rating && current.rating !== "0/5") {
+        return false;
+      }
+      return true;
+    })
+  ),
+});
+
+const resolveOwnArtisanId = (user = {}, artisanData = {}) =>
+  artisanData.id ||
+  user.artisan_id ||
+  user.artisan_p?.id ||
+  user.artisanP?.id ||
+  user.artisan_profile?.id ||
+  user.artisanProfile?.id ||
+  user.artisan?.id ||
+  "";
+
+const resolveOwnMetierId = (user = {}, artisanData = {}) =>
+  artisanData.metier_id ||
+  artisanData.metier?.id ||
+  user.metier_id ||
+  user.metier?.id ||
+  "";
+
+const buildRoutedArtisanSeed = (slug) => ({
+  ...defaultArtisan,
+  id: slug || "",
+});
 
 export default function ArtisanProfile() {
   const { slug } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useUserMode();
   const routedArtisan = location.state?.artisan;
   const publicArtisan = artisans.find((item) => item.slug === slug);
-  const artisanData = user?.artisan || user?.artisan_p || {};
-  const metier = artisanData.metier?.nom || user?.metier?.nom || user?.metier_nom || user?.trade || "";
+  const artisanData = useMemo(() => user?.artisan || user?.artisan_p || {}, [user]);
+  const [metiersById, setMetiersById] = useState({});
+  const metier = useMemo(() => {
+    const metierId = getMetierId(artisanData.metier, artisanData.metier_id, user?.metier, user?.metier_id);
+    return (
+      normalizeMetierName(artisanData.metier, user?.metier, artisanData.metier_nom, user?.metier_nom, user?.trade) ||
+      metiersById[String(metierId)] ||
+      ""
+    );
+  }, [artisanData, metiersById, user]);
   const fullName = user?.name || "";
   const memberSince = user?.created_at ? new Date(user.created_at).getFullYear().toString() : "";
-  const ownProfileSeed = {
+  const ownProfileSeed = useMemo(() => ({
     ...defaultArtisan,
-    id: artisanData.id || user?.artisan_id || user?.artisan_p?.id || "",
+    id: resolveOwnArtisanId(user, artisanData),
+    userId: user?.id || artisanData.user_id || "",
     nom: "",
     prenom: fullName || defaultArtisan.prenom,
     metier,
@@ -150,31 +267,34 @@ export default function ArtisanProfile() {
     email: user?.email || "",
     telephone: user?.telephone || "",
     statut: user?.statut || "",
-  };
-  const profileSeed = routedArtisan
+  }), [artisanData, fullName, memberSince, metier, user]);
+  const visitedArtisan = routedArtisan ? normalizeVisitedArtisan(routedArtisan, slug) : null;
+  const profileSeed = visitedArtisan
     ? {
         ...defaultArtisan,
-        id: normalizeVisitedArtisan(routedArtisan, slug).id,
+        id: visitedArtisan.id,
+        userId: visitedArtisan.userId,
         nom: "",
-        prenom: normalizeVisitedArtisan(routedArtisan, slug).name || defaultArtisan.prenom,
-        metier: normalizeVisitedArtisan(routedArtisan, slug).metier,
-        ville: normalizeVisitedArtisan(routedArtisan, slug).ville,
-        quartier: normalizeVisitedArtisan(routedArtisan, slug).quartier,
-        atelier: normalizeVisitedArtisan(routedArtisan, slug).atelier,
-        experience: normalizeVisitedArtisan(routedArtisan, slug).experience,
-        bio: normalizeVisitedArtisan(routedArtisan, slug).bio,
-        photo: normalizeVisitedArtisan(routedArtisan, slug).photo,
-        verified: normalizeVisitedArtisan(routedArtisan, slug).verified,
-        rating: normalizeVisitedArtisan(routedArtisan, slug).rating,
-        reviews: normalizeVisitedArtisan(routedArtisan, slug).reviews,
-        email: normalizeVisitedArtisan(routedArtisan, slug).email,
-        telephone: normalizeVisitedArtisan(routedArtisan, slug).telephone,
-        statut: normalizeVisitedArtisan(routedArtisan, slug).statut,
+        prenom: visitedArtisan.name || defaultArtisan.prenom,
+        metier: visitedArtisan.metier,
+        ville: visitedArtisan.ville,
+        quartier: visitedArtisan.quartier,
+        atelier: visitedArtisan.atelier,
+        experience: visitedArtisan.experience,
+        bio: visitedArtisan.bio,
+        photo: visitedArtisan.photo,
+        verified: visitedArtisan.verified,
+        rating: visitedArtisan.rating,
+        reviews: visitedArtisan.reviews,
+        email: visitedArtisan.email,
+        telephone: visitedArtisan.telephone,
+        statut: visitedArtisan.statut,
       }
     : publicArtisan
     ? {
         ...defaultArtisan,
         id: publicArtisan.id || slug,
+        userId: publicArtisan.userId || "",
         nom: publicArtisan.lastName,
         prenom: publicArtisan.firstName,
         metier: publicArtisan.job,
@@ -188,13 +308,15 @@ export default function ArtisanProfile() {
         reviews: Number.parseInt(publicArtisan.reviews, 10) || defaultArtisan.reviews,
         services: publicArtisan.services,
       }
+    : slug
+    ? buildRoutedArtisanSeed(slug)
     : ownProfileSeed;
   const [artisan, setArtisan] = useState(profileSeed);
   const [verificationPending] = useState(() => (
     !profileSeed.verified && localStorage.getItem(verificationStatusKey) === "pending"
   ));
   const [activeFilter, setActiveFilter] = useState("all");
-  const [visitorMode] = useState(Boolean(publicArtisan || routedArtisan));
+  const [visitorMode] = useState(Boolean(slug || publicArtisan || routedArtisan));
   const [aboutForm, setAboutForm] = useState({
     bio: profileSeed.bio,
     ville: profileSeed.ville,
@@ -210,6 +332,87 @@ export default function ArtisanProfile() {
   const [portfolio, setPortfolio] = useState(initialPortfolio);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [portfolioUploading, setPortfolioUploading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadMetiers() {
+      try {
+        const payload = await getMetiers();
+        const nextMetiersById = Object.fromEntries(
+          getPaginatedItems(payload)
+            .map((item) => [String(item.id), normalizeMetierName(item)])
+            .filter(([id, name]) => id && name)
+        );
+        if (active) setMetiersById(nextMetiersById);
+      } catch {
+        if (active) setMetiersById({});
+      }
+    }
+
+    loadMetiers();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (visitorMode || artisan.id || !user?.id) return;
+
+    let active = true;
+
+    async function discoverOwnArtisanProfile() {
+      const metierId = resolveOwnMetierId(user, artisanData);
+
+      try {
+        const payload = await searchArtisans(metierId ? { metier_id: metierId } : {});
+        const foundArtisan = getPaginatedItems(payload).find((item) => {
+          const itemUserId = item.user_id || item.user?.id;
+          return String(itemUserId || "") === String(user.id);
+        });
+
+        if (active && foundArtisan) {
+          setArtisan((current) => mergeMeaningfulProfile(current, normalizeBackendArtisan(foundArtisan, metiersById)));
+        }
+      } catch {
+        // Le profil reste base sur les donnees de session si la recherche echoue.
+      }
+    }
+
+    discoverOwnArtisanProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [artisan.id, artisanData, metiersById, user, visitorMode]);
+
+  useEffect(() => {
+    if (visitorMode) return;
+
+    let active = true;
+
+    queueMicrotask(() => {
+      if (!active) return;
+
+      setArtisan((current) => mergeMeaningfulProfile(current, ownProfileSeed));
+
+      if (!editingAbout) {
+        setAboutForm((current) => ({
+          ...current,
+          bio: ownProfileSeed.bio || current.bio,
+          ville: ownProfileSeed.ville || current.ville,
+          quartier: ownProfileSeed.quartier || current.quartier,
+          atelier: ownProfileSeed.atelier || current.atelier,
+          experience: ownProfileSeed.experience || current.experience,
+        }));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [editingAbout, ownProfileSeed, visitorMode]);
 
   useEffect(() => {
     if (!artisan.id) return;
@@ -234,13 +437,18 @@ export default function ArtisanProfile() {
             avisPayload?.data?.artisan;
 
           if (backendArtisan) {
-            const nextArtisan = normalizeBackendArtisan(backendArtisan);
-            setArtisan((current) => ({
-              ...current,
-              ...Object.fromEntries(
-                Object.entries(nextArtisan).filter(([, value]) => value !== "" && value !== null && value !== undefined)
-              ),
-            }));
+            const nextArtisan = normalizeBackendArtisan(backendArtisan, metiersById);
+            setArtisan((current) => mergeMeaningfulProfile(current, nextArtisan));
+            if (!visitorMode && !editingAbout) {
+              setAboutForm((current) => ({
+                ...current,
+                bio: nextArtisan.bio || current.bio,
+                ville: nextArtisan.ville || current.ville,
+                quartier: nextArtisan.quartier || current.quartier,
+                atelier: nextArtisan.atelier || current.atelier,
+                experience: nextArtisan.experience || current.experience,
+              }));
+            }
           }
           setPortfolio(normalizeRealizationImages(getPostItems(postsPayload)));
         }
@@ -256,7 +464,7 @@ export default function ArtisanProfile() {
     return () => {
       active = false;
     };
-  }, [artisan.id]);
+  }, [artisan.id, editingAbout, metiersById, visitorMode]);
 
   const updateProfilePhoto = async (file) => {
     if (!file) return;
@@ -279,6 +487,36 @@ export default function ArtisanProfile() {
     }
   };
 
+  const openConversation = () => {
+    if (!user?.id) {
+      navigate("/login");
+      return;
+    }
+
+    if (!artisan.userId) {
+      alert("Impossible d'ouvrir la discussion : l'utilisateur de cet artisan est introuvable.");
+      return;
+    }
+
+    if (String(artisan.userId) === String(user.id)) {
+      navigate("/profile");
+      return;
+    }
+
+    navigate(`/messages?contact=${encodeURIComponent(artisan.userId)}`, {
+      state: {
+        contact: {
+          userId: artisan.userId,
+          profileId: artisan.id,
+          userType: "artisan",
+          name: [artisan.prenom, artisan.nom].filter(Boolean).join(" ") || "Artisan",
+          avatar: artisan.photo,
+          artisan,
+        },
+      },
+    });
+  };
+
   const addPortfolioItems = async (files) => {
     const selectedFiles = Array.from(files || []);
     const invalidFile = selectedFiles.find((file) => !allowedRealizationExtensions.test(file.name));
@@ -293,19 +531,23 @@ export default function ArtisanProfile() {
     setPortfolioUploading(true);
     try {
       const payload = await createPost({
-        description: "",
-        postType: "realisations",
+        description: "Réalisation",
+        postType: "realisation",
         media: selectedFiles,
       });
       const nextItems = normalizeRealizationImages([
         {
           ...(payload?.post || {}),
           media_json: payload?.post?.media_json || payload?.media_urls || [],
-          post_type: payload?.post?.post_type || "realisations",
+          post_type: payload?.post?.post_type || "realisation",
         },
       ]);
+      const fallbackItems = selectedFiles.map((file) => ({
+        src: URL.createObjectURL(file),
+        name: file.name,
+      }));
 
-      setPortfolio((current) => [...nextItems, ...current]);
+      setPortfolio((current) => [...(nextItems.length ? nextItems : fallbackItems), ...current]);
     } catch (error) {
       alert(getApiMessage(error, "Impossible d'ajouter les réalisations."));
     } finally {
@@ -382,6 +624,7 @@ export default function ArtisanProfile() {
           visitorMode={visitorMode}
           onPhotoChange={updateProfilePhoto}
           verificationPending={verificationPending}
+          onContact={openConversation}
         />
 
         <nav className="mt-4 flex gap-2 overflow-x-auto rounded-lg border border-[#eadfd3] bg-white px-4 py-3 shadow-sm">
@@ -435,7 +678,14 @@ export default function ArtisanProfile() {
             </div>
 
             <div className="mt-5">
-              <ReviewSection reviews={profileReviews} rating={artisan.rating} canReport={visitorMode} />
+              <ReviewSection
+                reviews={profileReviews}
+                rating={artisan.rating}
+                canReport={visitorMode}
+                targetId={artisan.id}
+                targetType="artisan"
+                targetUserId={artisan.userId}
+              />
             </div>
           </>
         )}
@@ -452,7 +702,14 @@ export default function ArtisanProfile() {
 
         {activeFilter === "reviews" && (
           <div className="mt-5">
-            <ReviewSection reviews={profileReviews} rating={artisan.rating} canReport={visitorMode} />
+            <ReviewSection
+              reviews={profileReviews}
+              rating={artisan.rating}
+              canReport={visitorMode}
+              targetId={artisan.id}
+              targetType="artisan"
+              targetUserId={artisan.userId}
+            />
           </div>
         )}
       </div>

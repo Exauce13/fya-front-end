@@ -97,6 +97,11 @@ export const getPaginatedItems = (payload) => {
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.artisans)) return payload.artisans;
   if (Array.isArray(payload?.metiers)) return payload.metiers;
+  const collectionKeys = ["users", "verifications", "offers", "reports", "payments", "appels_offres", "signalements", "paiements"];
+  for (const key of collectionKeys) {
+    if (Array.isArray(payload?.[key])) return payload[key];
+    if (Array.isArray(payload?.[key]?.data)) return payload[key].data;
+  }
   return [];
 };
 
@@ -120,6 +125,10 @@ export const getApiMessage = (error, fallback = "Une erreur est survenue.") => {
 
   if (error.code === "ERR_NETWORK") {
     return "Impossible de joindre le backend. Vérifiez l'adresse API et la configuration CORS Laravel.";
+  }
+
+  if (error.message) {
+    return error.message;
   }
 
   return fallback;

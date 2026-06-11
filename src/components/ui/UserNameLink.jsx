@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { useUserMode } from "../../context/useUserMode";
 import { findUserProfile } from "../../data/userProfiles";
 
 const normalizeRole = (type) => {
@@ -7,6 +8,11 @@ const normalizeRole = (type) => {
   if (["artisan", "artisans"].includes(value)) return "artisan";
   if (["client", "clients"].includes(value)) return "client";
   return "";
+};
+
+const sameId = (first, second) => {
+  if (!first || !second) return false;
+  return String(first) === String(second);
 };
 
 export default function UserNameLink({
@@ -19,16 +25,30 @@ export default function UserNameLink({
   children,
   onClick,
 }) {
+  const { user } = useUserMode();
   const profile = findUserProfile(name);
   const role = normalizeRole(type || profile.type);
-  const targetPath = path || (
-    id && role === "artisan"
+  const ownArtisanId = user?.artisan?.id || user?.artisan_p?.id || user?.artisan_id || user?.artisanP?.id;
+  const ownClientId = user?.client?.id || user?.client_id;
+  const targetUserId = state?.artisan?.userId || state?.client?.userId || state?.userId;
+  const isOwnProfile =
+    Boolean(user?.id) &&
+    (
+      sameId(targetUserId, user.id) ||
+      (role === "artisan" && sameId(id, ownArtisanId)) ||
+      (role === "client" && sameId(id, ownClientId)) ||
+      (!role && sameId(id, user.id))
+    );
+  const targetPath = isOwnProfile
+    ? "/profile"
+    : path || (
+      id && role === "artisan"
       ? `/artisans/${id}`
       : id && role === "client"
       ? `/clients/${id}`
       : profile.path
-  );
-  const targetState = state || (
+    );
+  const targetState = isOwnProfile ? undefined : state || (
     id && role === "artisan"
       ? { artisan: { id, name } }
       : id && role === "client"

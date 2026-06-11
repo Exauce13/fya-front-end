@@ -29,15 +29,6 @@ export default function VerificationCenter() {
   const validateInformation = () => {
     const nextErrors = {};
 
-    if (form.associationName.trim().length < 2) {
-      nextErrors.associationName = "Veuillez saisir le nom de l'association";
-    }
-    if (form.leaderName.trim().length < 3) {
-      nextErrors.leaderName = "Veuillez saisir le nom et prénoms du dirigeant";
-    }
-    if (!/^01\d{8}$/.test(form.leaderPhone.trim())) {
-      nextErrors.leaderPhone = "Le numéro doit contenir 10 chiffres et commencer par 01";
-    }
     if (!form.identityCard) {
       nextErrors.identityCard = "Veuillez joindre la carte d'identité nationale";
     }
@@ -59,20 +50,21 @@ export default function VerificationCenter() {
   const payVerification = async () => {
     setApiError("");
     const formData = new FormData();
-    formData.append("nom_association", form.associationName);
-    formData.append("association_name", form.associationName);
-    formData.append("dirigeant", form.leaderName);
-    formData.append("leader_name", form.leaderName);
-    formData.append("telephone_dirigeant", form.leaderPhone);
-    formData.append("leader_phone", form.leaderPhone);
+    formData.append("nom_association", form.associationName.trim() || "Non renseigné");
+    formData.append("telephone_association", form.leaderPhone.trim() || "Non renseigné");
     formData.append("montant", "1000");
-    formData.append("cip", form.identityCard);
-    formData.append("carte_identite", form.identityCard);
-    formData.append("diplome", form.diploma);
+    formData.append("piece_identites", form.identityCard, form.identityCard.name);
+    formData.append("piece_identite", form.identityCard, form.identityCard.name);
+    formData.append("diplome", form.diploma, form.diploma.name);
 
     try {
-      await requestCertification(formData);
+      const payload = await requestCertification(formData);
+      const paymentUrl = payload?.payment_url || payload?.url || payload?.payment?.payment_url;
       localStorage.setItem(verificationStatusKey, "pending");
+      if (paymentUrl) {
+        window.location.href = paymentUrl;
+        return;
+      }
       setPaid(true);
     } catch (error) {
       setApiError(getApiMessage(error, "Impossible d'envoyer la demande de vérification."));

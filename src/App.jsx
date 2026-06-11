@@ -1,5 +1,5 @@
 import "react-phone-number-input/style.css";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/footer/Footer";
 import RoleGate from "./components/routes/RoleGate";
@@ -42,6 +42,10 @@ function AppShell() {
 
   const isAuthPage = authPaths.includes(location.pathname);
   const isAdminPage = location.pathname.startsWith("/admin");
+
+  if (user?.role === "admin" && !isAdminPage && !isAuthPage) {
+    return <Navigate to="/admin" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F5F1]">

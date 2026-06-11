@@ -7,14 +7,18 @@ import UserNameLink from "../ui/UserNameLink";
 export default function ChatWindow({
   conversation,
   messages,
+  hiddenMessagesCount = 0,
   draft,
   images,
   panel,
   report,
+  loading = false,
   onDraftChange,
   onImagesChange,
   onRemoveImage,
   onSend,
+  onSendVoice,
+  onShowOlderMessages,
   onPanelChange,
   onReportChange,
   onSubmitReport,
@@ -29,7 +33,7 @@ export default function ChatWindow({
   }
 
   return (
-    <section className="flex min-h-[640px] flex-col rounded-r-xl bg-white">
+    <section className="flex h-[calc(100vh-7.5rem)] min-h-[620px] flex-col rounded-r-xl bg-white">
       <header className="relative flex items-center justify-between border-b border-[#eadfd3] px-6 py-4">
         <div className="flex items-center gap-3">
           <img src={conversation.avatar} alt={conversation.name} className="h-14 w-14 rounded-full object-cover" />
@@ -37,8 +41,9 @@ export default function ChatWindow({
             <h2 className="text-xl font-extrabold text-[#182433]">
               <UserNameLink
                 name={conversation.name}
-                id={conversation.userId}
+                id={conversation.profileId || conversation.userId}
                 type={conversation.userType}
+                state={conversation.profileState || { userId: conversation.userId }}
               >
                 {conversation.name}
               </UserNameLink>
@@ -83,7 +88,23 @@ export default function ChatWindow({
         </div>
       )}
 
-      <div className="flex-1 space-y-4 overflow-y-auto bg-[#fffdf9] p-6">
+      <div className="flex-1 space-y-4 overflow-y-auto bg-[#fffdf9] p-4 sm:p-6">
+        {hiddenMessagesCount > 0 && (
+          <div className="sticky top-0 z-[1] flex justify-center pb-2">
+            <button
+              type="button"
+              onClick={onShowOlderMessages}
+              className="rounded-full border border-[#d9e8f4] bg-white/95 px-4 py-2 text-xs font-extrabold text-[#145DA0] shadow-sm backdrop-blur transition hover:border-[#145DA0] hover:bg-[#eef6ff]"
+            >
+              Voir plus de messages
+            </button>
+          </div>
+        )}
+        {loading && messages.length === 0 && (
+          <p className="rounded-lg bg-white px-4 py-3 text-sm font-bold text-gray-500 shadow-sm">
+            Chargement des messages...
+          </p>
+        )}
         {messages.map((message) => (
           <MessageBubble key={message.id} message={message} />
         ))}
@@ -96,6 +117,7 @@ export default function ChatWindow({
         onImagesChange={onImagesChange}
         onRemoveImage={onRemoveImage}
         onSend={onSend}
+        onSendVoice={onSendVoice}
       />
     </section>
   );

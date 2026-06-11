@@ -1,13 +1,23 @@
-import { ImagePlus, Mic, Send, Square } from "lucide-react";
+import { ImagePlus, Mic, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import ImagePreview from "./ImagePreview";
 
-export default function ChatInput({ text, images, onTextChange, onImagesChange, onRemoveImage, onSend }) {
+export default function ChatInput({ text, images, onTextChange, onImagesChange, onRemoveImage, onSend, onSendVoice }) {
   const [recording, setRecording] = useState(false);
+  const [sendingVoice, setSendingVoice] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const recordingStreamRef = useRef(null);
+
+  const getAudioExtension = (mimeType) => {
+    if (mimeType.includes("ogg")) return "ogg";
+    if (mimeType.includes("wav")) return "wav";
+    if (mimeType.includes("mpeg") || mimeType.includes("mp3")) return "mp3";
+    if (mimeType.includes("mp4") || mimeType.includes("m4a")) return "m4a";
+    return "webm";
+  };
 
   useEffect(() => {
     if (!recording) return undefined;
@@ -31,33 +41,69 @@ export default function ChatInput({ text, images, onTextChange, onImagesChange, 
   };
 
   const startRecording = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) return;
+    if (recording || sendingVoice) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      alert("L'enregistrement audio nécessite un navigateur compatible et une connexion sécurisée.");
+      return;
+    }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      alert("Impossible d'accéder au micro.");
+      return;
+    }
+
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ? "audio/webm;codecs=opus"
+      : MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "";
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     chunksRef.current = [];
     recorderRef.current = recorder;
+    recordingStreamRef.current = stream;
 
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunksRef.current.push(event.data);
     };
 
-    recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-      const src = URL.createObjectURL(blob);
-      onImagesChange((current) => [
-        ...current,
-        { name: `audio-${Date.now()}.webm`, src, type: "audio", file: blob },
-      ]);
+    recorder.onstop = async () => {
+      const type = recorder.mimeType || mimeType || chunksRef.current[0]?.type || "audio/webm";
+      const blob = new Blob(chunksRef.current, { type });
       stream.getTracks().forEach((track) => track.stop());
+      recordingStreamRef.current = null;
+      recorderRef.current = null;
+
+      if (blob.size === 0) {
+        setSendingVoice(false);
+        alert("Aucun son n'a été enregistré. Réessayez.");
+        return;
+      }
+
+      const fileName = `audio-${Date.now()}.${getAudioExtension(type)}`;
+      const file = new File([blob], fileName, { type });
+      const src = URL.createObjectURL(blob);
+
+      try {
+        await onSendVoice({ file, name: fileName, src, type: "audio", mimeType: type });
+      } catch {
+        // L'erreur est déjà affichée par la page de messagerie.
+      } finally {
+        setSendingVoice(false);
+      }
     };
 
-    recorder.start();
+    recorder.start(250);
     setRecordingSeconds(0);
     setRecording(true);
   };
 
-  const stopRecording = () => {
+  const sendRecording = () => {
+    if (!recorderRef.current || sendingVoice) return;
+    setSendingVoice(true);
+    recorderRef.current.requestData?.();
     recorderRef.current?.stop();
     setRecording(false);
   };
@@ -110,22 +156,26 @@ export default function ChatInput({ text, images, onTextChange, onImagesChange, 
         </label>
         <button
           type="button"
-          onClick={recording ? stopRecording : startRecording}
+          onClick={recording ? sendRecording : startRecording}
+          disabled={sendingVoice}
           className={`grid h-12 w-12 place-items-center rounded-xl border transition ${
             recording
-              ? "border-red-200 bg-red-50 text-red-600"
-              : "border-[#eadfd3] text-gray-600 hover:bg-[#fbfaf8]"
+              ? "border-[#C96B2C] bg-[#C96B2C] text-white disabled:opacity-60"
+              : "border-[#eadfd3] text-gray-600 hover:bg-[#fbfaf8] disabled:opacity-60"
           }`}
-          aria-label={recording ? "Arrêter l'enregistrement" : "Enregistrer un audio"}
+          aria-label={recording ? "Envoyer la note vocale" : "Enregistrer un audio"}
         >
-          {recording ? <Square size={18} /> : <Mic size={20} />}
+          {recording ? <Send size={19} /> : <Mic size={20} />}
         </button>
-        <button
-          onClick={onSend}
-          className="grid h-12 w-12 place-items-center rounded-xl bg-[#C96B2C] text-white transition hover:bg-[#b65e23]"
-        >
-          <Send size={20} />
-        </button>
+        {!recording && !sendingVoice && (
+          <button
+            type="button"
+            onClick={() => onSend()}
+            className="grid h-12 w-12 place-items-center rounded-xl bg-[#C96B2C] text-white transition hover:bg-[#b65e23]"
+          >
+            <Send size={20} />
+          </button>
+        )}
       </div>
     </div>
   );

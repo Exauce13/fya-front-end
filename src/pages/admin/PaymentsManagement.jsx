@@ -1,19 +1,64 @@
 import { Download } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import AdminTable, { StatusPill } from "../../components/admin/AdminTable";
-import { adminPayments } from "../../data/adminData";
+import { downloadAdminPaymentReceipt, exportAdminPayments, getAdminPayments } from "../../services/adminService";
+import { getApiMessage, getPaginatedItems } from "../../services/apiClient";
+
+const normalizePayment = (payment) => ({
+  id: payment.id || payment.reference,
+  user: payment.user?.name || payment.utilisateur?.name || payment.user_name || payment.user || "",
+  type: payment.type || "Abonnement",
+  amount: payment.amount ? `${Number(payment.amount).toLocaleString("fr-FR")} FCFA` : "",
+  provider: payment.provider || payment.operateur || "FedaPay",
+  status: payment.status || payment.statut || "En attente",
+  date: payment.date || (payment.created_at ? new Date(payment.created_at).toLocaleDateString("fr-FR") : ""),
+});
 
 export default function PaymentsManagement() {
   const [filters, setFilters] = useState({ q: "", type: "", status: "" });
-  const filteredPayments = useMemo(() => {
-    return adminPayments.filter((payment) => {
-      const query = filters.q.toLowerCase().trim();
-      const matchQuery = query ? `${payment.id} ${payment.user}`.toLowerCase().includes(query) : true;
-      const matchType = filters.type ? payment.type === filters.type : true;
-      const matchStatus = filters.status ? payment.status === filters.status : true;
-      return matchQuery && matchType && matchStatus;
-    });
+  const [payments, setPayments] = useState([]);
+  const [message, setMessage] = useState("");
+
+  const exportPayments = async () => {
+    try {
+      await exportAdminPayments(filters);
+    } catch (error) {
+      alert(getApiMessage(error, "Impossible d'exporter les paiements."));
+    }
+  };
+
+  const downloadReceipt = async (payment) => {
+    try {
+      await downloadAdminPaymentReceipt(payment.id);
+    } catch (error) {
+      alert(getApiMessage(error, "Impossible de télécharger le reçu."));
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadPayments() {
+      try {
+        const payload = await getAdminPayments(filters);
+        if (active) {
+          setPayments(getPaginatedItems(payload).map(normalizePayment));
+          setMessage("");
+        }
+      } catch (error) {
+        if (active) {
+          setPayments([]);
+          setMessage(getApiMessage(error, "Impossible de charger les paiements."));
+        }
+      }
+    }
+
+    loadPayments();
+
+    return () => {
+      active = false;
+    };
   }, [filters]);
 
   return (
@@ -21,8 +66,9 @@ export default function PaymentsManagement() {
       <AdminPageHeader
         title="Paiements"
         description="Suivi des abonnements et renouvellements payés via FedaPay."
-        action={<button className="rounded-lg bg-[#D96822] px-5 py-3 text-sm font-black text-white">Exporter</button>}
+        action={<button onClick={exportPayments} className="rounded-lg bg-[#D96822] px-5 py-3 text-sm font-black text-white">Exporter</button>}
       />
+      {message && <p className="mb-4 rounded-lg border border-[#F0C5C0] bg-white p-4 text-sm font-bold text-[#B42318]">{message}</p>}
       <div className="mb-5 grid gap-3 rounded-lg border border-[#E8DED2] bg-white p-4 md:grid-cols-[1fr_190px_190px]">
         <input
           value={filters.q}
@@ -50,7 +96,7 @@ export default function PaymentsManagement() {
         </select>
       </div>
       <AdminTable
-        rows={filteredPayments}
+        rows={payments}
         columns={[
           { key: "id", label: "Référence" },
           { key: "user", label: "Utilisateur" },
@@ -60,9 +106,9 @@ export default function PaymentsManagement() {
           { key: "date", label: "Date" },
           { key: "status", label: "Statut", render: (row) => <StatusPill status={row.status} /> },
         ]}
-        actions={() => (
+        actions={(row) => (
           <div className="flex gap-2">
-            <button className="rounded-lg border border-[#D7CABD] p-2 text-[#75695F]" title="Télécharger le reçu"><Download size={17} /></button>
+            <button onClick={() => downloadReceipt(row)} className="rounded-lg border border-[#D7CABD] p-2 text-[#75695F]" title="Télécharger le reçu"><Download size={17} /></button>
           </div>
         )}
       />

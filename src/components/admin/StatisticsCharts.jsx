@@ -1,9 +1,9 @@
-import { adminCityShare, adminRegistrationSeries } from "../../data/adminData";
-
-export function RegistrationChart() {
-  const points = adminRegistrationSeries.map((item, index) => {
+export function RegistrationChart({ series = [] }) {
+  const chartSeries = series.length ? series : [{ month: "", value: 0 }];
+  const maxValue = Math.max(...chartSeries.map((item) => Number(item.value || 0)), 1);
+  const points = chartSeries.map((item, index) => {
     const x = 12 + index * 11;
-    const y = 88 - (item.value / 800) * 72;
+    const y = 88 - (Number(item.value || 0) / maxValue) * 72;
     return `${x},${y}`;
   });
 
@@ -20,21 +20,22 @@ export function RegistrationChart() {
         <polyline fill="none" stroke="#1F5B87" strokeWidth="2.5" points={points.join(" ")} />
         {points.map((point, index) => {
           const [x, y] = point.split(",");
-          return <circle key={adminRegistrationSeries[index].month} cx={x} cy={y} r="1.8" fill="#1F5B87" />;
+          return <circle key={`${chartSeries[index].month}-${index}`} cx={x} cy={y} r="1.8" fill="#1F5B87" />;
         })}
       </svg>
       <div className="grid grid-cols-9 gap-1 text-center text-xs font-semibold text-[#8A7E75]">
-        {adminRegistrationSeries.map((item) => (
-          <span key={item.month}>{item.month}</span>
+        {chartSeries.map((item, index) => (
+          <span key={`${item.month}-${index}`}>{item.month}</span>
         ))}
       </div>
     </article>
   );
 }
 
-export function CityShareChart() {
+export function CityShareChart({ shares = [] }) {
+  const chartShares = shares.length ? shares : [{ city: "Aucune", value: 100, color: "#D7CABD" }];
   const circumference = 100;
-  const segments = adminCityShare.reduce((acc, item, index) => {
+  const segments = chartShares.reduce((acc, item, index) => {
     const previous = acc[index - 1];
     const strokeDashoffset = index === 0 ? 25 : previous.strokeDashoffset - previous.value;
     return [...acc, { ...item, strokeDashoffset }];
@@ -64,7 +65,7 @@ export function CityShareChart() {
           })}
         </svg>
         <div className="space-y-3">
-          {adminCityShare.map((item) => (
+          {chartShares.map((item) => (
             <div key={item.city} className="flex items-center gap-3 text-sm font-bold">
               <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
               <span>{item.city}</span>

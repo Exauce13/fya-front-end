@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BriefcaseBusiness, CalendarClock, Edit3, Mail, MapPin, Phone, Save, ShieldCheck, X } from "lucide-react";
+import { BriefcaseBusiness, CalendarClock, Edit3, MapPin, Save, X } from "lucide-react";
 import { getPasswordStrength } from "../../utils/passwordValidation";
 
 export default function AboutSection({
@@ -16,14 +16,10 @@ export default function AboutSection({
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const passwordStrength = getPasswordStrength(form.newPassword);
   const details = [
-    { icon: BriefcaseBusiness, label: "Métier", value: artisan.metier },
     { icon: MapPin, label: "Ville", value: artisan.ville },
     { icon: MapPin, label: "Quartier", value: artisan.quartier },
     { icon: CalendarClock, label: "Expérience", value: `${artisan.experience || 0} ans d'expérience` },
-    { icon: BriefcaseBusiness, label: "Atelier", value: artisan.atelier },
-    { icon: Phone, label: "Téléphone", value: artisan.telephone },
-    { icon: Mail, label: "Email", value: artisan.email },
-    { icon: ShieldCheck, label: "Statut", value: artisan.statut },
+    { icon: BriefcaseBusiness, label: "Nom de l'atelier", value: artisan.atelier },
   ];
 
   return (

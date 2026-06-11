@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -70,6 +70,7 @@ export default function ArtisanRegisterForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const submitLockedRef = useRef(false);
   const { metiers, loading: metiersLoading } = useMetiers();
 
   const {
@@ -101,12 +102,16 @@ export default function ArtisanRegisterForm() {
   };
 
   const onSubmit = async (data) => {
+    if (submitLockedRef.current) return;
+    submitLockedRef.current = true;
+
     try {
       const response = await registerArtisan(data);
       alert(response?.message || "Inscription artisan effectuee avec succes.");
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     } catch (error) {
       console.error(error);
+      submitLockedRef.current = false;
       alert(getApiMessage(error, "Une erreur est survenue pendant l'inscription."));
     }
   };
