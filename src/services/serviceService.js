@@ -35,6 +35,11 @@ export async function validateService(serviceId) {
   return getApiData(response);
 }
 
+export async function cancelService(serviceId) {
+  const response = await apiClient.patch(`/services/${serviceId}/annuler`);
+  return getApiData(response);
+}
+
 export async function completeService(serviceId) {
   const response = await apiClient.patch(`/services/${serviceId}/terminer`);
   return getApiData(response);

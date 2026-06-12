@@ -51,8 +51,6 @@ const initialPortfolio = [];
 
 const initialPosts = [];
 
-const profileReviews = [];
-
 const allowedRealizationExtensions = /\.(jpe?g|png|webp)$/i;
 
 const getPostItems = (payload) => {
@@ -135,6 +133,31 @@ const normalizeRealizationImages = (posts) =>
         name: value.split("/").pop() || "realisation",
       };
     });
+
+const getAvisItems = (payload) => {
+  if (Array.isArray(payload?.data?.avis)) return payload.data.avis;
+  if (Array.isArray(payload?.avis)) return payload.avis;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
+
+const normalizeReview = (review = {}) => {
+  const author = review.auteur || review.author || review.user || {};
+  const note = review.note ?? review.rating ?? 0;
+
+  return {
+    id: review.id || `${author.id || author.name || "avis"}-${review.created_at || Date.now()}`,
+    author: author.name || review.author_name || "Utilisateur FYA",
+    authorId: author.id || review.auteur_id || "",
+    avatar: getStorageUrl(author.photo || author.avatar) || profileAvatar,
+    rating: `${Number(note) || 0}/5`,
+    comment: review.commentaire || review.comment || review.text || "",
+    date: review.created_at ? new Date(review.created_at).toLocaleDateString("fr-FR") : "",
+  };
+};
+
+const getAvisStats = (payload) => payload?.data?.stats || payload?.stats || {};
 
 const normalizeVisitedArtisan = (artisan = {}, fallbackId = "") => {
   const raw = artisan.raw || artisan;
@@ -330,6 +353,7 @@ export default function ArtisanProfile() {
   const [editingAbout, setEditingAbout] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
   const [portfolio, setPortfolio] = useState(initialPortfolio);
+  const [profileReviews, setProfileReviews] = useState([]);
   const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [portfolioUploading, setPortfolioUploading] = useState(false);
 
@@ -450,10 +474,23 @@ export default function ArtisanProfile() {
               }));
             }
           }
+
+          const avisItems = getAvisItems(avisPayload).map(normalizeReview);
+          const avisStats = getAvisStats(avisPayload);
+          setProfileReviews(avisItems);
+          setArtisan((current) => mergeMeaningfulProfile(current, {
+            reviews: Number(avisStats.total_avis ?? avisItems.length),
+            rating: avisStats.moyenne_note !== null && avisStats.moyenne_note !== undefined
+              ? `${Number(avisStats.moyenne_note).toFixed(1)}/5`
+              : current.rating,
+          }));
           setPortfolio(normalizeRealizationImages(getPostItems(postsPayload)));
         }
       } catch {
-        if (active) setPortfolio([]);
+        if (active) {
+          setPortfolio([]);
+          setProfileReviews([]);
+        }
       } finally {
         if (active) setPortfolioLoading(false);
       }

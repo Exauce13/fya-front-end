@@ -1,15 +1,103 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../../assets/images/logo.webp";
 
 import NavLinks from "./NavLinks";
 import ProfileDropdown from "./ProfileDropdown";
 import MobileMenu from "./MobileMenu";
+import { getConversations } from "../../services/messageService";
+import { getOfferFeed, getOfferItems } from "../../services/offersService";
+
+const seenMessagesKey = "fya-seen-message-ids";
+const seenOffersKey = "fya-seen-offer-ids";
+
+const readSeenIds = (key) => {
+  try {
+    return JSON.parse(localStorage.getItem(key) || "[]").map(String);
+  } catch {
+    return [];
+  }
+};
+
+const writeSeenIds = (key, ids) => {
+  localStorage.setItem(key, JSON.stringify(Array.from(new Set(ids.map(String))).slice(0, 300)));
+};
+
+const asArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  return [];
+};
 
 export default function Navbar({ user }) {
   const location = useLocation();
   const isAuthenticated = !!user;
   const isHome = location.pathname === "/";
   const theme = isHome ? "dark" : "light";
+  const [messageIds, setMessageIds] = useState([]);
+  const [offerIds, setOfferIds] = useState([]);
+  const [seenMessageIds, setSeenMessageIds] = useState(() => readSeenIds(seenMessagesKey));
+  const [seenOfferIds, setSeenOfferIds] = useState(() => readSeenIds(seenOffersKey));
+
+  const refreshIndicators = useCallback(async () => {
+    if (!user?.id) {
+      setMessageIds([]);
+      setOfferIds([]);
+      return;
+    }
+
+    try {
+      const payload = await getConversations();
+      const unreadIds = asArray(payload)
+        .map((conversation) => conversation.last_message)
+        .filter((message) => message?.id && Number(message.expediteur_id) !== Number(user.id) && !message.is_read)
+        .map((message) => String(message.id));
+      setMessageIds(unreadIds);
+    } catch {
+      setMessageIds([]);
+    }
+
+    if (user.role === "artisan") {
+      try {
+        const payload = await getOfferFeed();
+        setOfferIds(getOfferItems(payload).map((offer) => String(offer.id)).filter(Boolean));
+      } catch {
+        setOfferIds([]);
+      }
+    } else {
+      setOfferIds([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const initialTimerId = window.setTimeout(refreshIndicators, 0);
+    const timerId = window.setInterval(refreshIndicators, 7000);
+
+    return () => {
+      window.clearTimeout(initialTimerId);
+      window.clearInterval(timerId);
+    };
+  }, [refreshIndicators]);
+
+  const indicators = useMemo(() => ({
+    "/messages": !location.pathname.startsWith("/messages") && messageIds.some((id) => !seenMessageIds.includes(id)),
+    "/offres": offerIds.some((id) => !seenOfferIds.includes(id)),
+  }), [location.pathname, messageIds, offerIds, seenMessageIds, seenOfferIds]);
+
+  const handleNavigate = (to) => {
+    if (to === "/messages") {
+      const nextIds = Array.from(new Set([...seenMessageIds, ...messageIds]));
+      setSeenMessageIds(nextIds);
+      writeSeenIds(seenMessagesKey, nextIds);
+    }
+
+    if (to === "/offres") {
+      const nextIds = Array.from(new Set([...seenOfferIds, ...offerIds]));
+      setSeenOfferIds(nextIds);
+      writeSeenIds(seenOffersKey, nextIds);
+    }
+  };
 
   return (
     <header
@@ -31,7 +119,7 @@ export default function Navbar({ user }) {
         </Link>
 
         {/* Navigation Desktop */}
-        <NavLinks theme={theme} />
+        <NavLinks theme={theme} indicators={indicators} onNavigate={handleNavigate} />
 
         {/* Actions */}
         <div className="flex items-center gap-4">
@@ -62,7 +150,7 @@ export default function Navbar({ user }) {
             )}
           </div>
 
-          <MobileMenu user={user} theme={theme} />
+          <MobileMenu user={user} theme={theme} indicators={indicators} onNavigate={handleNavigate} />
         </div>
 
       </div>

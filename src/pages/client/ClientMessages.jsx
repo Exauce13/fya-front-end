@@ -20,6 +20,7 @@ import profileAvatar from "../../assets/images/profile-avatar.svg";
 const refreshIntervalMs = 1800;
 const initialVisibleMessages = 35;
 const visibleMessagesStep = 25;
+const openedMessagesKey = "fya-opened-message-ids";
 
 const mediaKind = (media) => media.kind || (media.mime_type?.startsWith("video/") ? "video" : media.mime_type?.startsWith("audio/") ? "audio" : "image");
 
@@ -74,7 +75,25 @@ const normalizeConversation = (conversation, currentUserId) => {
         : undefined,
     },
     raw: conversation,
+    lastMessageId: lastMessage.id,
+    unread:
+      Boolean(lastMessage.id) &&
+      Number(lastMessage.expediteur_id) !== Number(currentUserId) &&
+      !readOpenedMessageIds().includes(String(lastMessage.id)),
   };
+};
+
+const readOpenedMessageIds = () => {
+  try {
+    return JSON.parse(localStorage.getItem(openedMessagesKey) || "[]").map(String);
+  } catch {
+    return [];
+  }
+};
+
+const markMessageIdsOpened = (ids) => {
+  const nextIds = Array.from(new Set([...readOpenedMessageIds(), ...ids.filter(Boolean).map(String)])).slice(0, 300);
+  localStorage.setItem(openedMessagesKey, JSON.stringify(nextIds));
 };
 
 const parseMessageMedia = (media) => {
@@ -524,6 +543,17 @@ export default function ClientMessages() {
     }));
   };
 
+  const openConversation = (conversation) => {
+    if (conversation.lastMessageId) {
+      markMessageIdsOpened([conversation.lastMessageId]);
+    }
+    setConversations((current) => current.map((item) => (
+      String(item.id) === String(conversation.id) ? { ...item, unread: false } : item
+    )));
+    setPanel("");
+    navigate(`/messages/${conversation.id}`);
+  };
+
   const submitReport = async () => {
     if (!activeConversation) return;
     if (!report.reason || !report.description.trim()) {
@@ -559,10 +589,7 @@ export default function ClientMessages() {
           <ConversationList
             conversations={conversations}
             activeId={null}
-            onSelect={(conversation) => {
-              setPanel("");
-              navigate(`/messages/${conversation.id}`);
-            }}
+            onSelect={openConversation}
           />
         </div>
       ) : (
@@ -571,10 +598,7 @@ export default function ClientMessages() {
             <ConversationList
               conversations={conversations}
               activeId={activeConversation.id}
-              onSelect={(conversation) => {
-                setPanel("");
-                navigate(`/messages/${conversation.id}`);
-              }}
+              onSelect={openConversation}
             />
           </div>
           <div>

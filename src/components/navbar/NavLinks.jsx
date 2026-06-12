@@ -8,7 +8,7 @@ const links = [
   { to: "/messages", label: "Messagerie", icon: MessageCircle },
 ];
 
-export default function NavLinks({ theme = "dark" }) {
+export default function NavLinks({ theme = "dark", indicators = {}, onNavigate }) {
   const navClass = ({ isActive }) => {
     if (theme === "light") {
       return isActive
@@ -24,9 +24,14 @@ export default function NavLinks({ theme = "dark" }) {
   return (
     <nav className="hidden md:flex items-center gap-8">
       {links.map(({ to, label, icon: Icon }) => (
-        <NavLink key={to} to={to} className={navClass}>
+        <NavLink key={to} to={to} onClick={() => onNavigate?.(to)} className={navClass}>
           <Icon size={18} />
-          {label}
+          <span className="relative">
+            {label}
+            {indicators[to] && (
+              <span className="absolute -right-2 -top-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+            )}
+          </span>
         </NavLink>
       ))}
     </nav>

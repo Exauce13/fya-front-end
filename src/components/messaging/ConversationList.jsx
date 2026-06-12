@@ -20,18 +20,27 @@ export default function ConversationList({ conversations, activeId, onSelect }) 
           <button
             key={conversation.id}
             onClick={() => onSelect(conversation)}
-            className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition ${
-              activeId === conversation.id ? "bg-[#eef6ff]" : "hover:bg-[#fbfaf8]"
+            className={`flex w-full items-center gap-3 rounded-lg border-l-4 p-3 text-left transition ${
+              activeId === conversation.id
+                ? "border-[#145DA0] bg-[#eef6ff]"
+                : conversation.unread
+                  ? "border-[#C96B2C] bg-[#ffe8cf] shadow-sm ring-1 ring-[#e7ad78] hover:bg-[#ffddb8]"
+                  : "border-transparent hover:bg-[#fbfaf8]"
             }`}
           >
-            <img
-              src={conversation.avatar}
-              alt={conversation.name}
-              className="h-14 w-14 rounded-full object-cover"
-            />
+            <span className="relative shrink-0">
+              <img
+                src={conversation.avatar}
+                alt={conversation.name}
+                className="h-14 w-14 rounded-full object-cover"
+              />
+              {conversation.unread && (
+                <span className="absolute -right-0.5 top-0 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white" />
+              )}
+            </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-3">
-                <strong className="truncate text-sm text-[#182433]">
+                <strong className={`truncate text-sm ${conversation.unread ? "text-[#102437]" : "text-[#182433]"}`}>
                   <UserNameLink
                     name={conversation.name}
                     id={conversation.profileId || conversation.userId}
@@ -42,9 +51,11 @@ export default function ConversationList({ conversations, activeId, onSelect }) 
                     {conversation.name}
                   </UserNameLink>
                 </strong>
-                <span className="text-xs font-semibold text-gray-400">{conversation.time}</span>
+                <span className={`text-xs ${conversation.unread ? "font-extrabold text-[#C96B2C]" : "font-semibold text-gray-400"}`}>
+                  {conversation.time}
+                </span>
               </span>
-              <span className="mt-1 block truncate text-xs font-semibold text-gray-500">
+              <span className={`mt-1 block truncate text-xs ${conversation.unread ? "font-extrabold text-[#9A4F16]" : "font-semibold text-gray-500"}`}>
                 {conversation.service}
               </span>
             </span>

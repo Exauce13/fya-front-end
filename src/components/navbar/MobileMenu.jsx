@@ -20,7 +20,7 @@ const links = [
   { to: "/messages", label: "Messagerie", icon: MessageCircle },
 ];
 
-export default function MobileMenu({ user, theme = "dark" }) {
+export default function MobileMenu({ user, theme = "dark", indicators = {}, onNavigate }) {
   const menuRef = useRef(null);
   const [open, setOpen] = useState(false);
 
@@ -84,7 +84,10 @@ export default function MobileMenu({ user, theme = "dark" }) {
                 <NavLink
                   key={to}
                   to={to}
-                  onClick={close}
+                  onClick={() => {
+                    onNavigate?.(to);
+                    close();
+                  }}
                   className={({ isActive }) =>
                     `flex min-h-[52px] items-center gap-3 border-b border-[#eadfd3] px-4 py-3 text-sm font-extrabold transition ${
                       isActive
@@ -94,7 +97,12 @@ export default function MobileMenu({ user, theme = "dark" }) {
                   }
                 >
                   <Icon size={19} />
-                  {label}
+                  <span className="relative">
+                    {label}
+                    {indicators[to] && (
+                      <span className="absolute -right-3 top-0 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                    )}
+                  </span>
                 </NavLink>
               ))}
             </nav>

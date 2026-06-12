@@ -5,13 +5,44 @@ import AdminTable, { StatusPill } from "../../components/admin/AdminTable";
 import { getAdminReports, ignoreAdminReport, markAdminReportAsTreated } from "../../services/adminService";
 import { getApiMessage, getPaginatedItems } from "../../services/apiClient";
 
+const getUserName = (...values) => {
+  for (const value of values) {
+    if (!value) continue;
+    if (typeof value === "string" && value.trim() && value.trim().toLowerCase() !== "utilisateur") {
+      return value;
+    }
+    if (typeof value === "object") {
+      const name = value.name || value.nom || value.full_name || value.email;
+      if (name) return name;
+    }
+  }
+
+  return "Utilisateur";
+};
+
 const normalizeReport = (report) => ({
   id: report.id || report.reference,
-  user: report.user || report.reported_by?.name || report.auteur?.name || report.user?.name || "Utilisateur",
-  target: report.target || report.cible?.name || report.cible || "",
+  user: getUserName(
+    report.plaignant,
+    report.signale_par,
+    report.signalePar,
+    report.reported_by,
+    report.auteur,
+    report.user,
+    report.plaignant_name,
+    report.signalement_par
+  ),
+  target: getUserName(
+    report.mise_en_cause,
+    report.miseEnCause,
+    report.cible_user,
+    report.cibleUser,
+    report.cible,
+    report.target
+  ),
   reason: report.reason || report.motif || "",
   description: report.description || "",
-  status: report.status || report.statut || "En attente",
+  status: report.status || report.statut_plainte || report.statut || "En attente",
 });
 
 export default function ReportsManagement() {

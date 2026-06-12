@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Clock3, Edit3, Plus, Save } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Edit3, Plus, Save, X } from "lucide-react";
 
 import { useUserMode } from "../../context/useUserMode";
 import { getApiMessage, getPaginatedItems } from "../../services/apiClient";
 import { getConversationMessages, getConversations, sendMessage } from "../../services/messageService";
 import {
+  cancelService,
   completeService,
   createService,
   getClientServices,
@@ -15,17 +16,20 @@ import {
 } from "../../services/serviceService";
 
 const storedServiceKey = "fya-conversation-service-ids";
+const seenServiceActionsKey = "fya-seen-service-action-ids";
 
 const statusLabels = {
   en_attente: "En attente",
   en_cours: "En cours",
   terminer: "Terminé",
+  annule: "Annulé",
 };
 
 const statusStyles = {
   en_attente: "bg-[#FFF4DF] text-[#A15C00]",
   en_cours: "bg-[#E9F3FF] text-[#145DA0]",
   terminer: "bg-[#E8F7E9] text-[#267A39]",
+  annule: "bg-[#FDECEC] text-[#B42318]",
 };
 
 const emptyForm = {
@@ -64,6 +68,18 @@ const rememberServiceId = (conversationId, serviceId) => {
   } catch {
     // The backend remains the source of truth; local storage only helps reload services without a list endpoint.
   }
+};
+
+const readSeenServiceActions = () => {
+  try {
+    return JSON.parse(localStorage.getItem(seenServiceActionsKey) || "[]").map(String);
+  } catch {
+    return [];
+  }
+};
+
+const writeSeenServiceActions = (items) => {
+  localStorage.setItem(seenServiceActionsKey, JSON.stringify(Array.from(new Set(items.map(String))).slice(0, 300)));
 };
 
 const normalizeService = (service) => {
@@ -116,6 +132,7 @@ export default function ConversationService() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [seenServiceActions, setSeenServiceActions] = useState(() => readSeenServiceActions());
 
   const currentUserId = user?.id;
   const currentArtisanId = getUserArtisanId(user);
@@ -293,7 +310,9 @@ export default function ConversationService() {
     try {
       const payload = action === "validate"
         ? await validateService(service.id)
-        : await completeService(service.id);
+        : action === "cancel"
+          ? await cancelService(service.id)
+          : await completeService(service.id);
       const nextService = normalizeService(getServiceFromPayload(payload));
 
       if (nextService) {
@@ -307,6 +326,15 @@ export default function ConversationService() {
     } catch (actionError) {
       setError(getApiMessage(actionError, "Action impossible sur ce service."));
     }
+  };
+
+  const markServiceActionSeen = (service) => {
+    const actionId = getServiceActionId(service, currentUserId, currentClientId, currentArtisanId);
+    if (!actionId || seenServiceActions.includes(actionId)) return;
+
+    const nextItems = [...seenServiceActions, actionId];
+    setSeenServiceActions(nextItems);
+    writeSeenServiceActions(nextItems);
   };
 
   return (
@@ -405,8 +433,11 @@ export default function ConversationService() {
                 currentUserId={currentUserId}
                 currentClientId={currentClientId}
                 currentArtisanId={currentArtisanId}
+                seenServiceActions={seenServiceActions}
+                onMarkSeen={() => markServiceActionSeen(service)}
                 onEdit={() => beginEdit(service)}
                 onValidate={() => runServiceAction(service, "validate")}
+                onCancel={() => runServiceAction(service, "cancel")}
                 onComplete={() => runServiceAction(service, "complete")}
               />
             ))}
@@ -426,7 +457,32 @@ export default function ConversationService() {
   );
 }
 
-function ServiceCard({ service, currentUserId, currentClientId, currentArtisanId, onEdit, onValidate, onComplete }) {
+function getServiceActionId(service, currentUserId, currentClientId, currentArtisanId) {
+  const isCreator =
+    Number(service.artisanUserId) === Number(currentUserId) ||
+    (currentArtisanId && Number(service.artisanId) === Number(currentArtisanId));
+  const isClient =
+    Number(service.clientUserId) === Number(currentUserId) ||
+    (currentClientId && Number(service.clientId) === Number(currentClientId));
+  const userConfirmedEnd = isCreator ? Boolean(service.artisanCompletedAt) : Boolean(service.clientCompletedAt);
+
+  if (isClient && service.status === "en_attente") return `${service.id}:client-validation`;
+  if ((isCreator || isClient) && service.status === "en_cours" && !userConfirmedEnd) return `${service.id}:finish-${currentUserId}`;
+  return "";
+}
+
+function ServiceCard({
+  service,
+  currentUserId,
+  currentClientId,
+  currentArtisanId,
+  seenServiceActions,
+  onMarkSeen,
+  onEdit,
+  onValidate,
+  onCancel,
+  onComplete,
+}) {
   const isCreator =
     Number(service.artisanUserId) === Number(currentUserId) ||
     (currentArtisanId && Number(service.artisanId) === Number(currentArtisanId));
@@ -437,9 +493,14 @@ function ServiceCard({ service, currentUserId, currentClientId, currentArtisanId
   const canValidate = isClient && service.status === "en_attente";
   const canEdit = isCreator && service.status === "en_attente";
   const canComplete = (isCreator || isClient) && service.status === "en_cours" && !userConfirmedEnd;
+  const actionId = getServiceActionId(service, currentUserId, currentClientId, currentArtisanId);
+  const hasPendingAction = Boolean(actionId) && !seenServiceActions.includes(actionId);
 
   return (
-    <article className="rounded-xl border border-[#eadfd3] bg-white p-5 shadow-sm">
+    <article onClick={onMarkSeen} className="relative rounded-xl border border-[#eadfd3] bg-white p-5 shadow-sm">
+      {hasPendingAction && (
+        <span className="absolute right-4 top-4 h-3 w-3 rounded-full bg-red-500 ring-2 ring-white" />
+      )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-extrabold">{service.title}</h2>
@@ -454,14 +515,24 @@ function ServiceCard({ service, currentUserId, currentClientId, currentArtisanId
 
       <div className="mt-5 flex flex-wrap gap-3">
         {canValidate && (
-          <button
-            type="button"
-            onClick={onValidate}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#9DD7B5] px-5 text-sm font-extrabold text-[#267A39] hover:bg-[#E8F7E9]"
-          >
-            <Check size={17} />
-            Valider
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={onValidate}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#9DD7B5] px-5 text-sm font-extrabold text-[#267A39] hover:bg-[#E8F7E9]"
+            >
+              <Check size={17} />
+              Valider
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#F0C5C0] px-5 text-sm font-extrabold text-[#B42318] hover:bg-red-50"
+            >
+              <X size={17} />
+              Annuler
+            </button>
+          </>
         )}
         {canEdit && (
           <button
