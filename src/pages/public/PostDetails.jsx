@@ -22,7 +22,7 @@ const normalizeComment = (comment) => ({
 export default function PostDetails() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useUserMode();
+  const { user, isVisitor } = useUserMode();
   const post = location.state?.post;
   const [likeState, setLikeState] = useState(() => ({
     liked: Boolean(post?.likedByCurrentUser) || isPostLiked(user?.id, post?.id),
@@ -74,6 +74,10 @@ export default function PostDetails() {
 
   const addComment = async (event) => {
     event.preventDefault();
+    if (isVisitor) {
+      navigate("/login");
+      return;
+    }
     const text = commentText.trim();
     if (!text) return;
 
@@ -104,6 +108,10 @@ export default function PostDetails() {
   };
 
   const toggleLike = async () => {
+    if (isVisitor) {
+      navigate("/login");
+      return;
+    }
     if (likePending) return;
 
     const previousLikeState = likeStateRef.current;

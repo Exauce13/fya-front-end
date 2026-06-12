@@ -134,4 +134,19 @@ export const getApiMessage = (error, fallback = "Une erreur est survenue.") => {
   return fallback;
 };
 
+export const getApiValidationErrors = (error) => {
+  const validationErrors = error.response?.data?.errors || error.response?.data?.errorlist;
+
+  if (!validationErrors || typeof validationErrors !== "object") {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(validationErrors).map(([field, messages]) => [
+      field,
+      Array.isArray(messages) ? messages.join(" ") : String(messages || ""),
+    ])
+  );
+};
+
 export default apiClient;

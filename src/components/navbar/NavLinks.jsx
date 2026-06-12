@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, Search, Briefcase, MessageCircle } from "lucide-react";
+import { Briefcase, ClipboardList, Home, MessageCircle, Search } from "lucide-react";
 
 const links = [
   { to: "/", label: "Accueil", icon: Home },
@@ -8,7 +8,12 @@ const links = [
   { to: "/messages", label: "Messagerie", icon: MessageCircle },
 ];
 
-export default function NavLinks({ theme = "dark", indicators = {}, onNavigate }) {
+export default function NavLinks({ theme = "dark", indicators = {}, onNavigate, userRole = "visitor" }) {
+  const visibleLinks =
+    userRole !== "visitor"
+      ? [...links, { to: "/mes-services", label: "Mes Services", icon: ClipboardList }]
+      : links;
+
   const navClass = ({ isActive }) => {
     if (theme === "light") {
       return isActive
@@ -23,7 +28,7 @@ export default function NavLinks({ theme = "dark", indicators = {}, onNavigate }
 
   return (
     <nav className="hidden md:flex items-center gap-8">
-      {links.map(({ to, label, icon: Icon }) => (
+      {visibleLinks.map(({ to, label, icon: Icon }) => (
         <NavLink key={to} to={to} onClick={() => onNavigate?.(to)} className={navClass}>
           <Icon size={18} />
           <span className="relative">

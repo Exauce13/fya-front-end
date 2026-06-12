@@ -21,8 +21,16 @@ export async function getMetiers() {
 }
 
 export async function searchArtisans(params = {}) {
-  const response = await apiClient.get("/users/recherche-artisans", { params });
-  return getApiData(response);
+  const client = authStorage.getToken() ? apiClient : publicApiClient;
+
+  try {
+    const response = await client.get("/recherche-artisans", { params });
+    return getApiData(response);
+  } catch (error) {
+    if (![401, 403, 404].includes(error.response?.status)) throw error;
+    const response = await client.get("/users/recherche-artisans", { params });
+    return getApiData(response);
+  }
 }
 
 export async function getFeedPosts() {

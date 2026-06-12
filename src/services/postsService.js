@@ -1,4 +1,4 @@
-import apiClient, { getApiData } from "./apiClient";
+import apiClient, { getApiData, publicApiClient } from "./apiClient";
 
 const normalizePostType = (postType) => {
   const value = String(postType || "service")
@@ -36,8 +36,14 @@ export async function likePost(postId) {
 }
 
 export async function getPostComments(postId) {
-  const response = await apiClient.get(`/posts/${postId}/commentaires`);
-  return getApiData(response);
+  try {
+    const response = await publicApiClient.get(`/${postId}/commentaires`);
+    return getApiData(response);
+  } catch (error) {
+    if (![401, 403, 404].includes(error.response?.status)) throw error;
+    const response = await publicApiClient.get(`/posts/${postId}/commentaires`);
+    return getApiData(response);
+  }
 }
 
 export async function createComment({ postId, text }) {

@@ -3,9 +3,8 @@ import { CheckCircle2, MapPin, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { SectionHeader } from "./CategoriesSection";
-import { useUserMode } from "../../context/useUserMode";
 import profileAvatar from "../../assets/images/profile-avatar.svg";
-import { getMetiers, searchArtisans } from "../../services/artisanService";
+import { getArtisanAvis, getMetiers, searchArtisans } from "../../services/artisanService";
 import { getPaginatedItems, getStorageUrl } from "../../services/apiClient";
 
 const normalizeMetier = (metier, index = 0) => ({
@@ -34,8 +33,21 @@ const normalizeArtisan = (artisan) => ({
   raw: artisan,
 });
 
+const getReviewStats = (payload) => payload?.data?.stats || payload?.stats || {};
+
+const applyReviewStats = (artisan, payload) => {
+  const stats = getReviewStats(payload);
+  const rating = stats.moyenne_note ?? artisan.raw?.moyenne_note ?? artisan.raw?.rating ?? artisan.rating;
+  const reviews = stats.total_avis ?? artisan.raw?.total_avis ?? artisan.raw?.avis_count ?? artisan.reviews;
+
+  return {
+    ...artisan,
+    rating: rating !== null && rating !== undefined && rating !== "" ? Number(rating).toFixed(1) : "0.0",
+    reviews: reviews || "0",
+  };
+};
+
 export default function VerifiedArtisans() {
-  const { isVisitor } = useUserMode();
   const [artisans, setArtisans] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,10 +80,18 @@ export default function VerifiedArtisans() {
           });
         });
 
-        const items = Array.from(itemsById.values())
+        const baseItems = Array.from(itemsById.values())
           .map(normalizeArtisan)
           .filter((artisan) => artisan.verified)
           .slice(0, 5);
+        const statsResponses = await Promise.allSettled(
+          baseItems.map((artisan) => getArtisanAvis(artisan.id))
+        );
+        const items = baseItems.map((artisan, index) => (
+          statsResponses[index]?.status === "fulfilled"
+            ? applyReviewStats(artisan, statsResponses[index].value)
+            : artisan
+        ));
 
         if (active) setArtisans(items);
       } catch {
@@ -92,7 +112,7 @@ export default function VerifiedArtisans() {
     <section className="mt-7">
       <SectionHeader
         title="Artisans vérifiés"
-        actionLink={isVisitor ? "/login" : "/explorer?verified=true"}
+        actionLink="/explorer?verified=true"
         actionLabel="Voir tous +"
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
@@ -109,18 +129,18 @@ export default function VerifiedArtisans() {
         )}
 
         {!loading && artisans.map((artisan) => (
-          <VerifiedArtisanCard key={artisan.id} artisan={artisan} isVisitor={isVisitor} />
+          <VerifiedArtisanCard key={artisan.id} artisan={artisan} />
         ))}
       </div>
     </section>
   );
 }
 
-function VerifiedArtisanCard({ artisan, isVisitor }) {
+function VerifiedArtisanCard({ artisan }) {
   return (
     <Link
-      to={isVisitor ? "/login" : `/artisans/${artisan.id}`}
-      state={isVisitor ? undefined : { artisan }}
+      to={`/artisans/${artisan.id}`}
+      state={{ artisan }}
       className="group overflow-hidden rounded-lg border border-[#eadfd3] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="aspect-[4/3] overflow-hidden bg-[#f6f2ed]">

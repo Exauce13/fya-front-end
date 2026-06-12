@@ -5,7 +5,7 @@ import FilterSidebar from "../../components/search/FilterSidebar";
 import ResultsGrid from "../../components/search/ResultsGrid";
 import ResultsList from "../../components/search/ResultsList";
 import SearchHeader from "../../components/search/SearchHeader";
-import { getMetiers, searchArtisans } from "../../services/artisanService";
+import { getArtisanAvis, getMetiers, searchArtisans } from "../../services/artisanService";
 import { getApiMessage, getPaginatedItems, getStorageUrl } from "../../services/apiClient";
 
 const normalizeMetier = (metier, index = 0) => ({
@@ -53,6 +53,20 @@ const normalizeArtisan = (artisan) => ({
   image: getStorageUrl(artisan.photo || artisan.user?.photo),
   raw: artisan,
 });
+
+const getReviewStats = (payload) => payload?.data?.stats || payload?.stats || {};
+
+const applyReviewStats = (artisan, payload) => {
+  const stats = getReviewStats(payload);
+  const rating = stats.moyenne_note ?? artisan.raw?.moyenne_note ?? artisan.raw?.rating ?? artisan.rating;
+  const reviews = stats.total_avis ?? artisan.raw?.total_avis ?? artisan.raw?.avis_count ?? artisan.reviews;
+
+  return {
+    ...artisan,
+    rating: rating !== null && rating !== undefined && rating !== "" ? Number(rating).toFixed(1) : "0.0",
+    reviews: reviews || "0",
+  };
+};
 
 export default function ExploreArtisans() {
   const [searchParams] = useSearchParams();
@@ -136,7 +150,15 @@ export default function ExploreArtisans() {
           });
         });
 
-        const items = Array.from(itemsById.values()).map(normalizeArtisan);
+        const baseItems = Array.from(itemsById.values()).map(normalizeArtisan);
+        const statsResponses = await Promise.allSettled(
+          baseItems.map((artisan) => getArtisanAvis(artisan.id))
+        );
+        const items = baseItems.map((artisan, index) => (
+          statsResponses[index]?.status === "fulfilled"
+            ? applyReviewStats(artisan, statsResponses[index].value)
+            : artisan
+        ));
 
         if (active) {
           setArtisans(items);

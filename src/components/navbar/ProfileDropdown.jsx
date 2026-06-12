@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   User,
@@ -10,6 +10,7 @@ import { logout } from "../../services/authService";
 
 export default function ProfileDropdown({ user, theme = "dark" }) {
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function ProfileDropdown({ user, theme = "dark" }) {
       // Le nettoyage local est deja effectue dans le service.
     }
     setOpen(false);
+    navigate("/", { replace: true });
   };
 
   return (

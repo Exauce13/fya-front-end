@@ -134,7 +134,7 @@ export default function PostCard({ post, onPostUpdate }) {
           </span>
         </span>
         <Link
-          to={isVisitor ? "/login" : getPostUrl(data)}
+          to={getPostUrl(data)}
           state={{ post: data }}
           className="transition hover:text-[#145DA0]"
         >

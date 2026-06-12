@@ -49,3 +49,13 @@ export async function getClientServices(clientId) {
   const response = await apiClient.get(`/clients/${clientId}/services`);
   return getApiData(response);
 }
+
+export async function getArtisanServices(artisanId) {
+  const response = await apiClient.get(`/services/artisans/${artisanId}`);
+  return getApiData(response);
+}
+
+export async function getClientServiceHistory(clientId) {
+  const response = await apiClient.get(`/services/clients/${clientId}`);
+  return getApiData(response);
+}

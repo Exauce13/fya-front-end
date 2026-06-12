@@ -36,6 +36,11 @@ export default function ReviewSection({
     event.preventDefault();
     const reportedUserId = targetUserId || (targetType === "user" ? targetId : "");
 
+    if (isVisitor) {
+      window.location.href = "/login";
+      return;
+    }
+
     if (!reportedUserId) {
       alert("Impossible d'identifier l'utilisateur à signaler pour le moment.");
       return;

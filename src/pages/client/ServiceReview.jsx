@@ -35,6 +35,7 @@ export default function ServiceReview() {
   const { conversationId, serviceId } = useParams();
   const navigate = useNavigate();
   const { user } = useUserMode();
+  const returnPath = conversationId ? `/messages/${conversationId}/service` : "/mes-services";
   const [service, setService] = useState(null);
   const [review, setReview] = useState({ rating: 5, comment: "" });
   const [loading, setLoading] = useState(true);
@@ -117,7 +118,7 @@ export default function ServiceReview() {
         comment: review.comment.trim(),
       });
       setSuccess(true);
-      setTimeout(() => navigate(`/messages/${conversationId}/service`), 700);
+      setTimeout(() => navigate(returnPath), 700);
     } catch (submitError) {
       setError(getApiMessage(submitError, "Impossible d'envoyer l'avis."));
     } finally {
@@ -151,7 +152,7 @@ export default function ServiceReview() {
         <div className="mx-auto max-w-xl rounded-lg border border-[#eadfd3] bg-white p-6 text-center shadow-sm">
           <p className="text-lg font-extrabold">Le service doit d'abord être marqué comme terminé.</p>
           <Link
-            to={`/messages/${conversationId}/service`}
+            to={returnPath}
             className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#145DA0] px-5 text-sm font-extrabold text-white"
           >
             Retour au service
@@ -165,7 +166,7 @@ export default function ServiceReview() {
     <div className="min-h-screen bg-[#F8F5F1] px-0 pb-10 pt-24 text-[#182433] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-2xl">
         <Link
-          to={`/messages/${conversationId}/service`}
+          to={returnPath}
           className="mb-4 inline-flex items-center gap-2 px-4 text-sm font-extrabold text-[#145DA0] sm:px-0"
         >
           <ArrowLeft size={17} />

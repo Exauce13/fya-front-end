@@ -38,6 +38,10 @@ export async function login(credentials) {
   const token = extractToken(response.data) || extractToken(payload);
   const user = extractUser(response.data) || extractUser(payload);
 
+  if (!token || !user) {
+    throw new Error(response.data?.message || "Email ou mot de passe incorrect.");
+  }
+
   authStorage.setSession({ token, user }, credentials.remember);
   return { token, user, payload };
 }
@@ -64,8 +68,26 @@ export async function registerClient(data) {
   });
 
   const payload = getApiData(response);
-  authStorage.clear();
-  return payload;
+  const token = extractToken(response.data) || extractToken(payload);
+  const user = extractUser(response.data) || extractUser(payload);
+
+  if (token && user) {
+    authStorage.setSession({ token, user }, false);
+    return { ...payload, token, user };
+  }
+
+  try {
+    const session = await login({
+      telemail: data.email,
+      password: data.password,
+      remember: false,
+    });
+
+    return { ...payload, token: session.token, user: session.user };
+  } catch {
+    authStorage.clear();
+    return payload;
+  }
 }
 
 export async function registerArtisan(data) {
@@ -90,8 +112,26 @@ export async function registerArtisan(data) {
   });
 
   const payload = getApiData(response);
-  authStorage.clear();
-  return payload;
+  const token = extractToken(response.data) || extractToken(payload);
+  const user = extractUser(response.data) || extractUser(payload);
+
+  if (token && user) {
+    authStorage.setSession({ token, user }, false);
+    return { ...payload, token, user };
+  }
+
+  try {
+    const session = await login({
+      telemail: data.email,
+      password: data.password,
+      remember: false,
+    });
+
+    return { ...payload, token: session.token, user: session.user };
+  } catch {
+    authStorage.clear();
+    return payload;
+  }
 }
 
 export async function updatePassword(data) {

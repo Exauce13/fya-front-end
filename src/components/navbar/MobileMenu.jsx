@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 
 import {
   Briefcase,
+  ClipboardList,
   Home,
   LogOut,
   Menu,
@@ -22,9 +23,14 @@ const links = [
 
 export default function MobileMenu({ user, theme = "dark", indicators = {}, onNavigate }) {
   const menuRef = useRef(null);
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   const close = () => setOpen(false);
+  const visibleLinks =
+    user
+      ? [...links, { to: "/mes-services", label: "Mes Services", icon: ClipboardList }]
+      : links;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -80,7 +86,7 @@ export default function MobileMenu({ user, theme = "dark", indicators = {}, onNa
             )}
 
             <nav>
-              {links.map(({ to, label, icon: Icon }) => (
+              {visibleLinks.map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -125,6 +131,7 @@ export default function MobileMenu({ user, theme = "dark", indicators = {}, onNa
                       // Le nettoyage local est deja effectue dans le service.
                     }
                     close();
+                    navigate("/", { replace: true });
                   }}
                   className="flex min-h-[52px] w-full items-center gap-3 bg-red-50 px-4 py-3 text-sm font-extrabold text-red-600 transition hover:bg-red-100"
                 >

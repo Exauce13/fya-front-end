@@ -13,6 +13,48 @@ export const getPasswordStrength = (password) => {
   return "Fort";
 };
 
+export const passwordRequirementRules = [
+  {
+    key: "minLength",
+    label: "Au moins 8 caractères",
+    test: (password) => String(password || "").length >= 8,
+  },
+  {
+    key: "maxLength",
+    label: "Maximum 12 caractères",
+    test: (password) => String(password || "").length > 0 && String(password || "").length <= 12,
+  },
+  {
+    key: "uppercase",
+    label: "Une lettre majuscule",
+    test: (password) => /[A-Z]/.test(password || ""),
+  },
+  {
+    key: "lowercase",
+    label: "Une lettre minuscule",
+    test: (password) => /[a-z]/.test(password || ""),
+  },
+  {
+    key: "digit",
+    label: "Un chiffre",
+    test: (password) => /\d/.test(password || ""),
+  },
+  {
+    key: "special",
+    label: "Un caractère spécial @$!%*?&_-#",
+    test: (password) => /[@$!%*?&_\-#]/.test(password || ""),
+  },
+];
+
+export const getPasswordRequirementStates = (password) =>
+  passwordRequirementRules.map((rule) => ({
+    ...rule,
+    valid: rule.test(password),
+  }));
+
+export const isPasswordValid = (password) =>
+  getPasswordRequirementStates(password).every((rule) => rule.valid);
+
 export const validatePasswordChange = ({
   currentPassword,
   newPassword,
@@ -29,22 +71,10 @@ export const validatePasswordChange = ({
 
   if (!newPassword) {
     errors.newPassword = "Veuillez saisir un nouveau mot de passe";
-  } else {
-    if (newPassword.length < 8) {
-      errors.newPassword = "Le mot de passe doit contenir au moins 8 caractères";
-    } else if (newPassword.length > 12) {
-      errors.newPassword = "Le mot de passe ne doit pas dépasser 12 caractères";
-    } else if (!/[A-Z]/.test(newPassword)) {
-      errors.newPassword = "Le mot de passe doit contenir une majuscule";
-    } else if (!/[a-z]/.test(newPassword)) {
-      errors.newPassword = "Le mot de passe doit contenir une minuscule";
-    } else if (!/\d/.test(newPassword)) {
-      errors.newPassword = "Le mot de passe doit contenir un chiffre";
-    } else if (!/[@$!%*?&_\-#]/.test(newPassword)) {
-      errors.newPassword = "Le mot de passe doit contenir un caractère spécial";
-    } else if (currentPassword && currentPassword === newPassword) {
-      errors.newPassword = "Le nouveau mot de passe doit être différent de l'actuel";
-    }
+  } else if (!isPasswordValid(newPassword)) {
+    errors.newPassword = "Le mot de passe ne respecte pas toutes les conditions";
+  } else if (currentPassword && currentPassword === newPassword) {
+    errors.newPassword = "Le nouveau mot de passe doit être différent de l'actuel";
   }
 
   if (!confirmPassword) {

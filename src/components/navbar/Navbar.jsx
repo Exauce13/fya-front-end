@@ -119,7 +119,7 @@ export default function Navbar({ user }) {
         </Link>
 
         {/* Navigation Desktop */}
-        <NavLinks theme={theme} indicators={indicators} onNavigate={handleNavigate} />
+        <NavLinks theme={theme} indicators={indicators} onNavigate={handleNavigate} userRole={user?.role} />
 
         {/* Actions */}
         <div className="flex items-center gap-4">

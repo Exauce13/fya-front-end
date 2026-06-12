@@ -14,6 +14,7 @@ import { getArtisanAvis, getArtisanPosts, getMetiers, searchArtisans } from "../
 import { updatePassword } from "../../services/authService";
 import { createPost } from "../../services/postsService";
 import { updateProfileInformation, updateProfilePhoto as uploadProfilePhoto } from "../../services/profileService";
+import { getArtisanServices } from "../../services/serviceService";
 import profileAvatar from "../../assets/images/profile-avatar.svg";
 import {
   hasPasswordErrors,
@@ -159,6 +160,47 @@ const normalizeReview = (review = {}) => {
 
 const getAvisStats = (payload) => payload?.data?.stats || payload?.stats || {};
 
+const getCompletedServicesCount = (...sources) => {
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
+    const value =
+      source.services_termines_count ??
+      source.servicesTerminesCount ??
+      source.prestations_realisees_count ??
+      source.prestationsRealiseesCount ??
+      source.prestations_count ??
+      source.prestationsCount ??
+      source.completed_services_count ??
+      source.completedServicesCount ??
+      source.services_count ??
+      source.servicesCount;
+
+    if (value !== null && value !== undefined && value !== "") {
+      return Number(value) || 0;
+    }
+  }
+
+  return 0;
+};
+
+const getCompletedServicesCountFromPayload = (payload) => {
+  const data = payload?.data || payload || {};
+  const counts = data.comptes || data.counts || {};
+  const finished =
+    counts.terminer ??
+    counts.termine ??
+    counts.termines ??
+    data.services_termines_count ??
+    data.completed_services_count;
+
+  if (finished !== null && finished !== undefined && finished !== "") {
+    return Number(finished) || 0;
+  }
+
+  if (Array.isArray(data.services?.terminer)) return data.services.terminer.length;
+  return null;
+};
+
 const normalizeVisitedArtisan = (artisan = {}, fallbackId = "") => {
   const raw = artisan.raw || artisan;
   const user = raw.user || artisan.user || {};
@@ -178,6 +220,7 @@ const normalizeVisitedArtisan = (artisan = {}, fallbackId = "") => {
     verified: Boolean(artisan.verified || raw.is_certifed || raw.is_certified),
     rating: `${artisan.rating || raw.rating || 0}/5`,
     reviews: Number(artisan.reviews || raw.reviews || 0),
+    services: getCompletedServicesCount(artisan, raw, user),
     email: artisan.email || user.email || raw.email || "",
     telephone: artisan.telephone || user.telephone || raw.telephone || "",
     statut: artisan.statut || user.statut || raw.statut || "",
@@ -204,6 +247,7 @@ const normalizeBackendArtisan = (backendArtisan = {}, metiersById = {}) => {
     bio: backendArtisan.bio || user.bio || "",
     photo: getStorageUrl(user.photo || backendArtisan.photo) || profileAvatar,
     verified: Boolean(backendArtisan.is_certifed || backendArtisan.is_certified),
+    services: getCompletedServicesCount(backendArtisan, user),
     email: user.email || backendArtisan.email || "",
     telephone: user.telephone || backendArtisan.telephone || "",
     statut: user.statut || backendArtisan.statut || "",
@@ -285,7 +329,7 @@ export default function ArtisanProfile() {
     verified: Boolean(artisanData.is_certifed || artisanData.is_certified || user?.is_certifed),
     rating: user?.rating || "0/5",
     reviews: user?.reviews_count || user?.avis_count || 0,
-    services: user?.prestations_count || user?.services_count || 0,
+    services: getCompletedServicesCount(user, artisanData),
     memberSince,
     email: user?.email || "",
     telephone: user?.telephone || "",
@@ -446,19 +490,23 @@ export default function ArtisanProfile() {
     async function loadPortfolio() {
       setPortfolioLoading(true);
       try {
-        const [postsResponse, avisResponse] = await Promise.allSettled([
+        const [postsResponse, avisResponse, servicesResponse] = await Promise.allSettled([
           getArtisanPosts(artisan.id),
           getArtisanAvis(artisan.id),
+          getArtisanServices(artisan.id),
         ]);
 
         if (active) {
           const postsPayload = postsResponse.status === "fulfilled" ? postsResponse.value : null;
           const avisPayload = avisResponse.status === "fulfilled" ? avisResponse.value : null;
+          const servicesPayload = servicesResponse.status === "fulfilled" ? servicesResponse.value : null;
           const backendArtisan =
             postsPayload?.artisan ||
             postsPayload?.data?.artisan ||
             avisPayload?.artisan ||
-            avisPayload?.data?.artisan;
+            avisPayload?.data?.artisan ||
+            servicesPayload?.artisan ||
+            servicesPayload?.data?.artisan;
 
           if (backendArtisan) {
             const nextArtisan = normalizeBackendArtisan(backendArtisan, metiersById);
@@ -477,12 +525,14 @@ export default function ArtisanProfile() {
 
           const avisItems = getAvisItems(avisPayload).map(normalizeReview);
           const avisStats = getAvisStats(avisPayload);
+          const completedServices = getCompletedServicesCountFromPayload(servicesPayload);
           setProfileReviews(avisItems);
           setArtisan((current) => mergeMeaningfulProfile(current, {
             reviews: Number(avisStats.total_avis ?? avisItems.length),
             rating: avisStats.moyenne_note !== null && avisStats.moyenne_note !== undefined
               ? `${Number(avisStats.moyenne_note).toFixed(1)}/5`
               : current.rating,
+            ...(completedServices !== null ? { services: completedServices } : {}),
           }));
           setPortfolio(normalizeRealizationImages(getPostItems(postsPayload)));
         }

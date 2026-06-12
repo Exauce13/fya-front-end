@@ -3,13 +3,13 @@ import { Link } from "react-router-dom";
 import { Camera, ClipboardList, Edit3, Mail, MapPin, Phone, Save, ShieldCheck, Star, X } from "lucide-react";
 
 import UserNameLink from "../../components/ui/UserNameLink";
+import PasswordRequirements from "../../components/auth/PasswordRequirements";
 import { useUserMode } from "../../context/useUserMode";
 import profileAvatar from "../../assets/images/profile-avatar.svg";
 import { getApiMessage, getStorageUrl } from "../../services/apiClient";
 import { updatePassword } from "../../services/authService";
 import { updateProfileInformation, updateProfilePhoto } from "../../services/profileService";
 import {
-  getPasswordStrength,
   hasPasswordErrors,
   validatePasswordChange,
 } from "../../utils/passwordValidation";
@@ -197,17 +197,18 @@ export default function ClientProfile() {
                       onChange={(value) => setForm({ ...form, newPassword: value })}
                       error={passwordErrors.newPassword}
                     />
-                    {form.newPassword && (
-                      <p className="text-xs font-extrabold text-[#145DA0]">
-                        Sécurité : {getPasswordStrength(form.newPassword)}
-                      </p>
-                    )}
                     <Field
                       label="Confirmer le nouveau mot de passe"
                       type="password"
                       value={form.confirmPassword}
                       onChange={(value) => setForm({ ...form, confirmPassword: value })}
                       error={passwordErrors.confirmPassword}
+                    />
+                    <PasswordRequirements
+                      password={form.newPassword}
+                      confirmation={form.confirmPassword}
+                      currentPassword={form.currentPassword}
+                      showConfirmation
                     />
                   </div>
                 )}

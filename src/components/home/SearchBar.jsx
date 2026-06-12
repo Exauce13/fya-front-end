@@ -1,19 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
-import { useUserMode } from "../../context/useUserMode";
 
 export default function SearchBar() {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
-  const { isVisitor } = useUserMode();
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (isVisitor) {
-      navigate("/login");
-      return;
-    }
     const search = query.trim();
     navigate(search ? `/explorer?q=${encodeURIComponent(search)}` : "/explorer");
   };

@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import logo from "../../assets/images/logo.webp";
 import useMetiers from "../../hooks/useMetiers";
-import { getApiMessage } from "../../services/apiClient";
+import { getApiMessage, getApiValidationErrors } from "../../services/apiClient";
 import { registerArtisan } from "../../services/authService";
+import PasswordRequirements from "./PasswordRequirements";
+import RegisterSuccessDialog from "./RegisterSuccessDialog";
 
 const artisanSchema = z
   .object({
@@ -70,6 +72,8 @@ export default function ArtisanRegisterForm() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formStatus, setFormStatus] = useState(null);
+  const [successDialog, setSuccessDialog] = useState({ open: false, message: "" });
   const submitLockedRef = useRef(false);
   const { metiers, loading: metiersLoading } = useMetiers();
 
@@ -77,6 +81,7 @@ export default function ArtisanRegisterForm() {
     register,
     handleSubmit,
     watch,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(artisanSchema),
@@ -84,35 +89,47 @@ export default function ArtisanRegisterForm() {
   });
 
   const password = watch("password", "");
-
-  const getPasswordStrength = () => {
-    if (!password) return "";
-
-    let score = 0;
-
-    if (password.length >= 8) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/[a-z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
-    if (/[@$!%*?&_\-#]/.test(password)) score++;
-
-    if (score <= 3) return "Faible";
-    if (score === 4) return "Moyen";
-    return "Fort";
-  };
+  const confirmPassword = watch("confirm_password", "");
 
   const onSubmit = async (data) => {
     if (submitLockedRef.current) return;
     submitLockedRef.current = true;
+    setFormStatus(null);
 
     try {
       const response = await registerArtisan(data);
-      alert(response?.message || "Inscription artisan effectuee avec succes.");
-      navigate("/login", { replace: true });
+      setSuccessDialog({
+        open: true,
+        message: response?.message || "Votre compte artisan a été créé. Veuillez valider votre email.",
+      });
     } catch (error) {
       console.error(error);
       submitLockedRef.current = false;
-      alert(getApiMessage(error, "Une erreur est survenue pendant l'inscription."));
+      const validationErrors = getApiValidationErrors(error);
+      const fieldMap = {
+        telephone: "tel",
+        tel: "tel",
+        phone: "tel",
+        email: "email",
+        name: "full_name",
+        nom: "full_name",
+        full_name: "full_name",
+        npi: "npi",
+        metier_id: "metier",
+        metier_nom: "metier",
+        annees_experiences: "experience_years",
+        password: "password",
+      };
+
+      Object.entries(validationErrors).forEach(([field, message]) => {
+        const targetField = fieldMap[field] || field;
+        setError(targetField, { type: "server", message });
+      });
+
+      setFormStatus({
+        type: "error",
+        message: getApiMessage(error, "Une erreur est survenue pendant l'inscription."),
+      });
     }
   };
 
@@ -126,6 +143,11 @@ export default function ArtisanRegisterForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5] px-4 py-10">
+      <RegisterSuccessDialog
+        open={successDialog.open}
+        message={successDialog.message}
+        onConfirm={() => navigate("/", { replace: true })}
+      />
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-lg p-8">
         <div className="flex justify-center mb-6">
           <img src={logo} alt="Logo FYA" className="w-32" />
@@ -140,6 +162,18 @@ export default function ArtisanRegisterForm() {
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {formStatus && (
+            <div
+              className={`rounded-lg border px-4 py-3 text-sm font-bold ${
+                formStatus.type === "success"
+                  ? "border-green-200 bg-green-50 text-green-700"
+                  : "border-red-200 bg-red-50 text-red-700"
+              }`}
+            >
+              {formStatus.message}
+            </div>
+          )}
+
           {/* NPI */}
           <div>
             <label className="block mb-2 text-sm font-medium">
@@ -328,17 +362,7 @@ export default function ArtisanRegisterForm() {
               </button>
             </div>
 
-            {password && (
-              <p className="text-sm mt-1 text-gray-500">
-                Force : {getPasswordStrength()}
-              </p>
-            )}
-
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.password.message}
-              </p>
-            )}
+            <PasswordRequirements password={password} className="mt-3" />
           </div>
 
           {/* Confirmation */}
@@ -373,6 +397,13 @@ export default function ArtisanRegisterForm() {
               </button>
             </div>
 
+            <PasswordRequirements
+              password={password}
+              confirmation={confirmPassword}
+              confirmationOnly
+              className="mt-3"
+            />
+
             {errors.confirm_password && (
               <p className="text-red-500 text-sm mt-1">
                 {errors.confirm_password.message}
@@ -382,18 +413,25 @@ export default function ArtisanRegisterForm() {
 
           {/* Conditions */}
           <div>
-            <label className="flex items-start gap-2">
+            <div className="flex items-start gap-2">
               <input
+                id="artisan-terms"
                 type="checkbox"
                 {...register("terms")}
                 className="mt-1"
               />
 
               <span className="text-sm text-gray-600">
-                J'accepte les CGU et la politique de
-                confidentialité
+                J'accepte les{" "}
+                <Link to="/cgu" className="font-extrabold text-[#145DA0] hover:underline">
+                  CGU
+                </Link>{" "}
+                et la{" "}
+                <Link to="/confidentialite" className="font-extrabold text-[#145DA0] hover:underline">
+                  politique de confidentialité
+                </Link>
               </span>
-            </label>
+            </div>
 
             {errors.terms && (
               <p className="text-red-500 text-sm mt-1">

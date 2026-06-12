@@ -14,7 +14,13 @@ import ArtisanProfile from "./pages/public/ArtisanProfile";
 import ClientPublicProfile from "./pages/public/ClientPublicProfile";
 import PostDetails from "./pages/public/PostDetails";
 import RoleProfile from "./pages/public/RoleProfile";
+import Terms from "./pages/public/Terms";
+import Privacy from "./pages/public/Privacy";
+import NotFound from "./pages/public/NotFound";
+import About from "./pages/public/About";
+import Contact from "./pages/public/Contact";
 import VerificationCenter from "./pages/artisan/VerificationCenter";
+import MyServices from "./pages/artisan/MyServices";
 import ClosedOffers from "./pages/client/ClosedOffers";
 import MyOffers from "./pages/client/MyOffers";
 import MyOfferDetails from "./pages/client/MyOfferDetails";
@@ -54,14 +60,20 @@ function AppShell() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/metiers" element={<RoleGate><ServiceCategories /></RoleGate>} />
-          <Route path="/explorer" element={<RoleGate><ExploreArtisans /></RoleGate>} />
+          <Route path="/metiers" element={<ServiceCategories />} />
+          <Route path="/explorer" element={<ExploreArtisans />} />
           <Route path="/offres" element={<OffersEntry />} />
           <Route path="/profile" element={<RoleProfile />} />
-          <Route path="/artisans/:slug" element={<RoleGate><ArtisanProfile /></RoleGate>} />
-          <Route path="/clients/:slug" element={<RoleGate><ClientPublicProfile /></RoleGate>} />
-          <Route path="/publications/:postId" element={<RoleGate><PostDetails /></RoleGate>} />
+          <Route path="/artisans/:slug" element={<ArtisanProfile />} />
+          <Route path="/clients/:slug" element={<ClientPublicProfile />} />
+          <Route path="/publications/:postId" element={<PostDetails />} />
+          <Route path="/cgu" element={<Terms />} />
+          <Route path="/confidentialite" element={<Privacy />} />
+          <Route path="/a-propos" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="/verification-artisan" element={<RoleGate allow={["artisan"]}><VerificationCenter /></RoleGate>} />
+          <Route path="/mes-services" element={<RoleGate allow={["artisan", "client"]}><MyServices /></RoleGate>} />
+          <Route path="/mes-services/:serviceId/avis" element={<RoleGate allow={["artisan", "client"]}><ServiceReview /></RoleGate>} />
           <Route path="/mes-appels-offres" element={<RoleGate allow={["artisan", "client"]}><MyOffers /></RoleGate>} />
           <Route path="/mes-appels-offres/fermes" element={<RoleGate allow={["artisan", "client"]}><ClosedOffers /></RoleGate>} />
           <Route path="/mes-appels-offres/:offerId" element={<RoleGate allow={["artisan", "client"]}><MyOfferDetails /></RoleGate>} />
@@ -77,6 +89,7 @@ function AppShell() {
           <Route path="/register" element={<RegisterChoiceCard />} />
           <Route path="/forget-password" element={<ForgetPassword />} />
           <Route path="/admin/*" element={<RoleGate allow={["admin"]}><AdminRoutes /></RoleGate>} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       {!isAuthPage && !isAdminPage && <Footer />}

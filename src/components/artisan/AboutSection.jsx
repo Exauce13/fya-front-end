@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BriefcaseBusiness, CalendarClock, Edit3, MapPin, Save, X } from "lucide-react";
-import { getPasswordStrength } from "../../utils/passwordValidation";
+import PasswordRequirements from "../auth/PasswordRequirements";
 
 export default function AboutSection({
   artisan,
@@ -14,7 +14,6 @@ export default function AboutSection({
   passwordErrors = {},
 }) {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const passwordStrength = getPasswordStrength(form.newPassword);
   const details = [
     { icon: MapPin, label: "Ville", value: artisan.ville },
     { icon: MapPin, label: "Quartier", value: artisan.quartier },
@@ -104,17 +103,18 @@ export default function AboutSection({
                   onChange={(value) => onFormChange({ ...form, newPassword: value })}
                   error={passwordErrors.newPassword}
                 />
-                {form.newPassword && (
-                  <p className="text-xs font-extrabold text-[#145DA0]">
-                    Sécurité : {passwordStrength}
-                  </p>
-                )}
                 <Field
                   label="Confirmer le nouveau mot de passe"
                   type="password"
                   value={form.confirmPassword}
                   onChange={(value) => onFormChange({ ...form, confirmPassword: value })}
                   error={passwordErrors.confirmPassword}
+                />
+                <PasswordRequirements
+                  password={form.newPassword}
+                  confirmation={form.confirmPassword}
+                  currentPassword={form.currentPassword}
+                  showConfirmation
                 />
               </div>
             )}

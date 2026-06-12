@@ -9,6 +9,25 @@ import img from "../../assets/images/loginImg.png";
 import { getApiMessage } from "../../services/apiClient";
 import { login } from "../../services/authService";
 
+const rememberedLoginKey = "fya-remembered-login";
+
+const getRememberedLogin = () => {
+  try {
+    return JSON.parse(localStorage.getItem(rememberedLoginKey) || "{}");
+  } catch {
+    return {};
+  }
+};
+
+const saveRememberedLogin = (data) => {
+  if (data.remember) {
+    localStorage.setItem(rememberedLoginKey, JSON.stringify({ telemail: data.telemail }));
+    return;
+  }
+
+  localStorage.removeItem(rememberedLoginKey);
+};
+
 const isEmail = (value) => {
   const emailRegex =
     /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
@@ -37,6 +56,7 @@ const loginSchema = z.object({
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const rememberedLogin = getRememberedLogin();
 
   const [showPassword, setShowPassword] =
     useState(false);
@@ -54,6 +74,11 @@ export default function LoginForm() {
   } = useForm({
     resolver: zodResolver(loginSchema),
     mode: "onChange",
+    defaultValues: {
+      telemail: rememberedLogin.telemail || "",
+      password: "",
+      remember: Boolean(rememberedLogin.telemail),
+    },
   });
 
   const inputClass = (error) =>
@@ -69,6 +94,7 @@ export default function LoginForm() {
 
     try {
       await login(data);
+      saveRememberedLogin(data);
       navigate("/", { replace: true });
     } catch (error) {
       setApiError(
