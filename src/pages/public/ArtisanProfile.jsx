@@ -272,27 +272,46 @@ const mergeMeaningfulProfile = (current, next) => ({
   ),
 });
 
-const resolveOwnArtisanId = (user = {}, artisanData = {}) =>
-  artisanData.id ||
-  user.artisan_id ||
-  user.artisan_p?.id ||
-  user.artisanP?.id ||
-  user.artisan_profile?.id ||
-  user.artisanProfile?.id ||
-  user.artisan?.id ||
-  "";
+const resolveOwnArtisanId = (user = {}, artisanData = {}) => {
+  const currentUser = user || {};
+  const currentArtisan = artisanData || {};
 
-const resolveOwnMetierId = (user = {}, artisanData = {}) =>
-  artisanData.metier_id ||
-  artisanData.metier?.id ||
-  user.metier_id ||
-  user.metier?.id ||
-  "";
+  return (
+    currentArtisan.id ||
+    currentUser.artisan_id ||
+    currentUser.artisan_p?.id ||
+    currentUser.artisanP?.id ||
+    currentUser.artisan_profile?.id ||
+    currentUser.artisanProfile?.id ||
+    currentUser.artisan?.id ||
+    ""
+  );
+};
+
+const resolveOwnMetierId = (user = {}, artisanData = {}) => {
+  const currentUser = user || {};
+  const currentArtisan = artisanData || {};
+
+  return (
+    currentArtisan.metier_id ||
+    currentArtisan.metier?.id ||
+    currentUser.metier_id ||
+    currentUser.metier?.id ||
+    ""
+  );
+};
 
 const buildRoutedArtisanSeed = (slug) => ({
   ...defaultArtisan,
   id: slug || "",
 });
+
+const sameId = (first, second) =>
+  first !== null &&
+  first !== undefined &&
+  second !== null &&
+  second !== undefined &&
+  String(first) === String(second);
 
 export default function ArtisanProfile() {
   const { slug } = useParams();
@@ -454,6 +473,51 @@ export default function ArtisanProfile() {
       active = false;
     };
   }, [artisan.id, artisanData, metiersById, user, visitorMode]);
+
+  useEffect(() => {
+    if (!visitorMode || !slug) return;
+
+    const metierIds = Object.keys(metiersById).filter(Boolean);
+    if (metierIds.length === 0) return;
+
+    let active = true;
+
+    async function resolvePublicArtisanProfile() {
+      try {
+        const responses = await Promise.allSettled(
+          metierIds.map((metierId) => searchArtisans({ metier_id: metierId }))
+        );
+        const artisansById = new Map();
+
+        responses.forEach((response) => {
+          if (response.status !== "fulfilled") return;
+
+          getPaginatedItems(response.value).forEach((item) => {
+            if (item?.id) artisansById.set(String(item.id), item);
+          });
+        });
+
+        const foundArtisan = Array.from(artisansById.values()).find((item) => (
+          sameId(item.id, slug) ||
+          sameId(item.artisan_id, slug) ||
+          sameId(item.user_id, slug) ||
+          sameId(item.user?.id, slug)
+        ));
+
+        if (active && foundArtisan) {
+          setArtisan((current) => mergeMeaningfulProfile(current, normalizeBackendArtisan(foundArtisan, metiersById)));
+        }
+      } catch {
+        // La page garde les donnees transmises par la navigation si la recherche publique echoue.
+      }
+    }
+
+    resolvePublicArtisanProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [metiersById, slug, visitorMode]);
 
   useEffect(() => {
     if (visitorMode) return;
