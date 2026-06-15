@@ -1,3 +1,5 @@
+import { Navigate, useLocation } from "react-router-dom";
+
 import { useUserMode } from "../../context/useUserMode";
 import NotFound from "../../pages/public/NotFound";
 
@@ -15,6 +17,11 @@ const isSuspended = (user) => {
 
 export default function RoleGate({ children, allow = ["artisan", "client"] }) {
   const { role, user } = useUserMode();
+  const location = useLocation();
+
+  if (role === "visitor") {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
 
   if (isSuspended(user)) {
     return (
