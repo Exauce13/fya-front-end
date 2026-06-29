@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, Send } from "lucide-react";
 
 import PostCard from "./PostCard";
 import { useUserMode } from "../../context/useUserMode";
 import { getFeedPosts } from "../../services/artisanService";
 import { createPost } from "../../services/postsService";
 import { getApiMessage, getPaginatedItems, getStorageUrl } from "../../services/apiClient";
+import { onRealtimeEvent, realtimeEvents } from "../../services/realtimeService";
 import profileAvatar from "../../assets/images/profile-avatar.svg";
 import { isPostLiked } from "../../utils/likedPostsStorage";
 
@@ -16,6 +17,8 @@ const getMediaType = (path) => {
 };
 
 const allowedMediaExtensions = /\.(jpe?g|png|webp|mp4|mov)$/i;
+const maxMediaSizeMb = 50;
+const maxMediaSizeBytes = maxMediaSizeMb * 1024 * 1024;
 
 const resolveCurrentArtisanId = (user) =>
   user?.artisan?.id || user?.artisan_p?.id || user?.artisan_id || user?.artisanP?.id;
@@ -116,10 +119,43 @@ export default function FeedSection() {
     };
   }, [user]);
 
+  useEffect(() => onRealtimeEvent(
+    [realtimeEvents.postLiked, realtimeEvents.postCommented],
+    (event) => {
+      const detail = event.detail || {};
+      if (!detail.postId) return;
+
+      setPosts((current) => current.map((post) => {
+        if (String(post.id) !== String(detail.postId)) return post;
+
+        if (event.type === realtimeEvents.postLiked) {
+          return {
+            ...post,
+            likes: Number.isFinite(Number(detail.likesCount))
+              ? Number(detail.likesCount)
+              : Number(post.likes || 0) + 1,
+          };
+        }
+
+        return {
+          ...post,
+          comments: Number.isFinite(Number(detail.commentsCount))
+            ? Number(detail.commentsCount)
+            : Number(post.comments || 0) + 1,
+        };
+      }));
+    }
+  ), []);
+
   const attachImages = (files) => {
     Array.from(files).forEach((file) => {
       if (!allowedMediaExtensions.test(file.name)) {
         alert("Format invalide. Utilisez jpg, jpeg, png, webp, mp4 ou mov.");
+        return;
+      }
+
+      if (file.size > maxMediaSizeBytes) {
+        alert(`Fichier trop lourd. Chaque média doit faire ${maxMediaSizeMb} Mo maximum.`);
         return;
       }
 
@@ -190,7 +226,7 @@ export default function FeedSection() {
       <h2 className="px-4 text-xl font-extrabold text-[#182433] sm:px-0">Fil d'actualité</h2>
       {isArtisan && (
       <div className="mt-4 rounded-none border-y border-[#eadfd3] bg-white p-3 shadow-sm sm:rounded-lg sm:border sm:p-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <img
             src={resolveUserAvatar(user)}
             alt={user?.name || "Profil"}
@@ -202,10 +238,10 @@ export default function FeedSection() {
           <input
             value={text}
             onChange={(event) => setText(event.target.value)}
-            className="min-h-11 min-w-0 flex-[1_1_190px] rounded-full bg-[#f6f2ed] px-4 text-sm text-gray-700 outline-none sm:px-5"
+            className="min-h-11 min-w-0 flex-1 rounded-full bg-[#f6f2ed] px-4 text-sm text-gray-700 outline-none sm:px-5"
             placeholder="Quoi de neuf aujourd'hui ?"
           />
-          <div className="flex w-full justify-end gap-2 sm:w-auto">
+          <div className="flex shrink-0 justify-end gap-2">
             <label className="grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-[#eadfd3] text-[#145DA0] transition hover:bg-[#eef6ff]">
               <ImagePlus size={20} />
               <input
@@ -216,8 +252,14 @@ export default function FeedSection() {
                 onChange={(event) => attachImages(event.target.files)}
               />
             </label>
-            <button onClick={publishPost} className="min-h-11 rounded-md bg-[#2563EB] px-5 text-sm font-bold text-white">
-              Publier
+            <button
+              type="button"
+              onClick={publishPost}
+              className="grid h-11 w-11 place-items-center rounded-md bg-[#2563EB] text-sm font-bold text-white sm:w-auto sm:px-5"
+              aria-label="Publier"
+            >
+              <Send size={18} className="sm:hidden" />
+              <span className="hidden sm:inline">Publier</span>
             </button>
           </div>
         </div>

@@ -7,9 +7,10 @@ const normalizePostType = (postType) => {
     .toLowerCase()
     .trim();
 
-  if (value === "realisations") return "realisation";
-  if (value === "services") return "service";
-  return value || "service";
+  if (["realisation", "realisations"].includes(value)) return "realisations";
+  if (["service", "services"].includes(value)) return "services";
+  if (value === "promotion") return "promotion";
+  return "services";
 };
 
 const buildPostFormData = ({ description = "", postType = "service", media = [] }) => {
@@ -24,10 +25,23 @@ const buildPostFormData = ({ description = "", postType = "service", media = [] 
   return formData;
 };
 
+const throwIfApiFailed = (payload) => {
+  if (payload?.success !== false) return;
+
+  const validationErrors = payload.errorlist || payload.errors;
+  const firstError = validationErrors
+    ? Object.values(validationErrors).flat(Infinity)[0]
+    : "";
+
+  throw new Error(firstError || payload.message || "Impossible d'enregistrer la publication.");
+};
+
 export async function createPost(payload) {
   const formData = payload instanceof FormData ? payload : buildPostFormData(payload);
   const response = await apiClient.post("/posts/creerposts", formData);
-  return getApiData(response);
+  const data = getApiData(response);
+  throwIfApiFailed(data);
+  return data;
 }
 
 export async function likePost(postId) {

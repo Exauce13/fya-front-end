@@ -127,6 +127,10 @@ export const getApiMessage = (error, fallback = "Une erreur est survenue.") => {
     return "Impossible de joindre le backend. Vérifiez l'adresse API et la configuration CORS Laravel.";
   }
 
+  if (/failed to upload/i.test(error.message || "")) {
+    return "Le fichier n'a pas pu être envoyé. Vérifiez sa taille et la limite upload_max_filesize/post_max_size du backend.";
+  }
+
   if (error.message) {
     return error.message;
   }

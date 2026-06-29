@@ -7,9 +7,12 @@ import ProfileDropdown from "./ProfileDropdown";
 import MobileMenu from "./MobileMenu";
 import { getConversations } from "../../services/messageService";
 import { getOfferFeed, getOfferItems } from "../../services/offersService";
+import { onRealtimeEvent, realtimeEvents } from "../../services/realtimeService";
 
 const seenMessagesKey = "fya-seen-message-ids";
 const seenOffersKey = "fya-seen-offer-ids";
+const indicatorRefreshIntervalMs = 7000;
+const connectedIndicatorRefreshIntervalMs = 15000;
 
 const readSeenIds = (key) => {
   try {
@@ -39,6 +42,7 @@ export default function Navbar({ user }) {
   const [offerIds, setOfferIds] = useState([]);
   const [seenMessageIds, setSeenMessageIds] = useState(() => readSeenIds(seenMessagesKey));
   const [seenOfferIds, setSeenOfferIds] = useState(() => readSeenIds(seenOffersKey));
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   const refreshIndicators = useCallback(async () => {
     if (!user?.id) {
@@ -72,13 +76,60 @@ export default function Navbar({ user }) {
 
   useEffect(() => {
     const initialTimerId = window.setTimeout(refreshIndicators, 0);
-    const timerId = window.setInterval(refreshIndicators, 7000);
+    const timerId = window.setInterval(
+      refreshIndicators,
+      realtimeConnected ? connectedIndicatorRefreshIntervalMs : indicatorRefreshIntervalMs
+    );
 
     return () => {
       window.clearTimeout(initialTimerId);
       window.clearInterval(timerId);
     };
-  }, [refreshIndicators]);
+  }, [refreshIndicators, realtimeConnected]);
+
+  useEffect(() => {
+    const resetTimerId = window.setTimeout(() => setRealtimeConnected(false), 0);
+    if (!user?.id) return () => window.clearTimeout(resetTimerId);
+
+    const removeConnectedListener = onRealtimeEvent(realtimeEvents.connected, () => setRealtimeConnected(true));
+    const removeDisconnectedListener = onRealtimeEvent(
+      [realtimeEvents.disconnected, realtimeEvents.error],
+      () => setRealtimeConnected(false)
+    );
+
+    return () => {
+      window.clearTimeout(resetTimerId);
+      removeConnectedListener();
+      removeDisconnectedListener();
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    return onRealtimeEvent(
+      [realtimeEvents.message, realtimeEvents.offerPublished],
+      (event) => {
+        if (event.type === realtimeEvents.message) {
+          const detail = event.detail || {};
+          if (detail.id && Number(detail.senderId) !== Number(user.id)) {
+            setMessageIds((current) => Array.from(new Set([String(detail.id), ...current])));
+          } else {
+            refreshIndicators().catch(() => {});
+          }
+        }
+
+        if (event.type === realtimeEvents.offerPublished && user.role === "artisan") {
+          const offerId = event.detail?.offerId;
+          if (offerId) {
+            setOfferIds((current) => Array.from(new Set([String(offerId), ...current])));
+          } else {
+            refreshIndicators().catch(() => {});
+          }
+        }
+      }
+    );
+  }, [refreshIndicators, user]);
 
   const indicators = useMemo(() => ({
     "/messages": !location.pathname.startsWith("/messages") && messageIds.some((id) => !seenMessageIds.includes(id)),
@@ -119,7 +170,7 @@ export default function Navbar({ user }) {
         </Link>
 
         {/* Navigation Desktop */}
-        <NavLinks theme={theme} indicators={indicators} onNavigate={handleNavigate} userRole={user?.role} />
+        <NavLinks theme={theme} indicators={indicators} onNavigate={handleNavigate} />
 
         {/* Actions */}
         <div className="flex items-center gap-4">

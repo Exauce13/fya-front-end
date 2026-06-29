@@ -16,6 +16,8 @@ const getMediaType = (path) => {
 };
 
 const allowedMediaExtensions = /\.(jpe?g|png|webp|mp4|mov)$/i;
+const maxMediaSizeMb = 50;
+const maxMediaSizeBytes = maxMediaSizeMb * 1024 * 1024;
 
 const getPostItems = (payload) => {
   if (Array.isArray(payload?.posts?.data)) return payload.posts.data;
@@ -200,6 +202,11 @@ export default function ArtisanPublications({ artisan, initialPosts, visitorMode
     Array.from(files || []).forEach((file) => {
       if (!allowedMediaExtensions.test(file.name)) {
         alert("Format invalide. Utilisez jpg, jpeg, png, webp, mp4 ou mov.");
+        return;
+      }
+
+      if (file.size > maxMediaSizeBytes) {
+        alert(`Fichier trop lourd. Chaque média doit faire ${maxMediaSizeMb} Mo maximum.`);
         return;
       }
 

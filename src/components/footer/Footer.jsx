@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -6,7 +7,6 @@ import logo from "../../assets/images/logo.webp";
 const columns = [
   { title: "Navigation", items: ["Accueil", "Explorer", "Appels d'offres", "A propos", "Contact"] },
   { title: "Ressources", items: ["CGU", "Confidentialité"] },
-  { title: "Pour les artisans", items: ["S'inscrire", "Se faire vérifier"] },
 ];
 
 const footerRoutes = {
@@ -17,13 +17,13 @@ const footerRoutes = {
   Contact: "/contact",
   CGU: "/cgu",
   Confidentialité: "/confidentialite",
-  "S'inscrire": "/register",
-  "Se faire vérifier": "/verification-artisan",
 };
 
 const phoneDisplay = "01 97 71 22 74";
 const phoneHref = "+2290197712274";
 const email = "jeanpaulgnikpo12@gmail.com";
+const googleTranslateElementId = "google_translate_element";
+const googleTranslateScriptId = "google-translate-script";
 
 const socialLinks = [
   {
@@ -49,9 +49,53 @@ const socialLinks = [
 ];
 
 export default function Footer() {
+  const [translatedToEnglish, setTranslatedToEnglish] = useState(() => {
+    if (typeof document === "undefined") return false;
+    return document.cookie.includes("googtrans=/fr/en");
+  });
+
+  useEffect(() => {
+    if (document.getElementById(googleTranslateScriptId)) return;
+
+    window.googleTranslateElementInit = () => {
+      if (!window.google?.translate || !document.getElementById(googleTranslateElementId)) return;
+
+      new window.google.translate.TranslateElement(
+        {
+          pageLanguage: "fr",
+          includedLanguages: "fr,en",
+          autoDisplay: false,
+        },
+        googleTranslateElementId
+      );
+    };
+
+    const script = document.createElement("script");
+    script.id = googleTranslateScriptId;
+    script.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+    script.async = true;
+    document.body.appendChild(script);
+  }, []);
+
+  const setGoogleTranslateCookie = (value) => {
+    const hostname = window.location.hostname;
+    document.cookie = `googtrans=${value};path=/`;
+
+    if (hostname && hostname !== "localhost") {
+      document.cookie = `googtrans=${value};path=/;domain=.${hostname}`;
+    }
+  };
+/* 
+  const translatePage = () => {
+    const nextValue = translatedToEnglish ? "/fr/fr" : "/fr/en";
+    setGoogleTranslateCookie(nextValue);
+    setTranslatedToEnglish(!translatedToEnglish);
+    window.location.reload();
+  }; */
+
   return (
     <footer className="mt-8 bg-[#062033] text-white">
-      <div className="grid w-full gap-8 px-6 py-10 sm:px-8 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:px-10">
+      <div className="grid w-full gap-8 px-6 py-10 sm:px-8 md:grid-cols-[1.6fr_1fr_1fr_1.2fr] lg:px-10">
         <div>
           <img src={logo} alt="FYA" className="h-14 w-auto" />
           <p className="mt-4 max-w-xs text-sm leading-6 text-white/72">
@@ -86,6 +130,18 @@ export default function Footer() {
                   <p key={item}>{item}</p>
                 )
               ))}
+              {/* {column.title === "Ressources" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={translatePage}
+                    className="block text-left transition hover:text-white"
+                  >
+                    {translatedToEnglish ? "Revenir en français" : "Traduire en anglais"}
+                  </button>
+                  <div id={googleTranslateElementId} className="hidden" />
+                </>
+              )} */}
             </div>
           </div>
         ))}

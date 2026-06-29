@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 
@@ -8,6 +8,7 @@ import OfferMediaViewer from "../../components/offers/OfferMediaViewer";
 import OfferTabs from "../../components/offers/OfferTabs";
 import { applyToOffer, getOfferFeed, getOfferItems, normalizeOffer } from "../../services/offersService";
 import { getApiMessage } from "../../services/apiClient";
+import { onRealtimeEvent, realtimeEvents } from "../../services/realtimeService";
 import { useUserMode } from "../../context/useUserMode";
 import { getAppliedOfferIds, setOfferApplied } from "../../utils/appliedOffersStorage";
 
@@ -22,49 +23,110 @@ export default function Offers() {
   const [loading, setLoading] = useState(false);
   const [apiMessage, setApiMessage] = useState("");
 
-  useEffect(() => {
-    let active = true;
+  const loadOffers = useCallback(async ({ silent = false } = {}) => {
     const storedAppliedIds = getAppliedOfferIds(user?.id).map(String);
 
-    async function loadOffers() {
-      setLoading(true);
-      setApiMessage("");
+    if (!silent) setLoading(true);
+    setApiMessage("");
+    try {
+      const payload = await getOfferFeed();
+      const items = getOfferItems(payload)
+        .map((offer) => normalizeOffer(offer, false));
+      const backendAppliedIds = items
+        .filter((offer) =>
+          offer.applicants?.some((applicant) =>
+            Number(applicant.userId) === Number(user?.id) ||
+            Number(applicant.artisanId) === Number(currentArtisanId)
+          )
+        )
+        .map((offer) => String(offer.id));
+      backendAppliedIds.forEach((offerId) => setOfferApplied(user?.id, offerId));
+      setOffers(items);
+      setAppliedOfferIds((current) =>
+        Array.from(new Set([...current.map(String), ...storedAppliedIds, ...backendAppliedIds]))
+      );
+      setApiMessage(items.length ? "" : "Aucun appel d'offres correspondant à votre métier.");
+    } catch (error) {
+      if (!silent) {
+        setOffers([]);
+        setApiMessage(getApiMessage(error, "Aucun appel d'offres disponible."));
+      }
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [currentArtisanId, user?.id]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadInitialOffers() {
       try {
-        const payload = await getOfferFeed();
-        if (active) {
-          const items = getOfferItems(payload)
-            .map((offer) => normalizeOffer(offer, false));
-          const backendAppliedIds = items
-            .filter((offer) =>
-              offer.applicants?.some((applicant) =>
-                Number(applicant.userId) === Number(user?.id) ||
-                Number(applicant.artisanId) === Number(currentArtisanId)
-              )
-            )
-            .map((offer) => String(offer.id));
-          backendAppliedIds.forEach((offerId) => setOfferApplied(user?.id, offerId));
-          setOffers(items);
-          setAppliedOfferIds((current) =>
-            Array.from(new Set([...current.map(String), ...storedAppliedIds, ...backendAppliedIds]))
-          );
-          setApiMessage(items.length ? "" : "Aucun appel d'offres correspondant à votre métier.");
-        }
-      } catch (error) {
-        if (active) {
-          setOffers([]);
-          setApiMessage(getApiMessage(error, "Aucun appel d'offres disponible."));
-        }
+        await loadOffers();
       } finally {
-        if (active) setLoading(false);
+        if (!active) {
+          setLoading(false);
+        }
       }
     }
 
-    loadOffers();
+    loadInitialOffers();
 
     return () => {
       active = false;
     };
-  }, [currentArtisanId, user?.id]);
+  }, [loadOffers]);
+
+  useEffect(() => onRealtimeEvent(
+    [realtimeEvents.offerPublished, realtimeEvents.offerApplication, realtimeEvents.notification],
+    (event) => {
+      const detail = event.detail || {};
+
+      if (event.type === realtimeEvents.notification && detail.type === "nouvel_appel_offre") {
+        const offerFromNotification = detail.data?.appel_offre_id
+          ? normalizeOffer(
+              {
+                id: detail.data.appel_offre_id,
+                titre: detail.data.titre,
+                metier_id: detail.data.metier_id,
+                ville: detail.data.ville,
+                created_at: detail.raw?.created_at,
+              },
+              false
+            )
+          : null;
+
+        if (offerFromNotification?.id) {
+          setOffers((current) => (
+            current.some((offer) => String(offer.id) === String(offerFromNotification.id))
+              ? current
+              : [offerFromNotification, ...current]
+          ));
+          setApiMessage("");
+        }
+
+        loadOffers({ silent: true }).catch(() => {});
+        return;
+      }
+
+      if (event.type === realtimeEvents.offerPublished && detail.offer?.id) {
+        const nextOffer = normalizeOffer(detail.offer, false);
+        setOffers((current) => (
+          current.some((offer) => String(offer.id) === String(nextOffer.id))
+            ? current
+            : [nextOffer, ...current]
+        ));
+        setApiMessage("");
+      }
+
+      if (event.type === realtimeEvents.offerApplication && detail.offerId) {
+        setOffers((current) => current.map((offer) => (
+          String(offer.id) === String(detail.offerId)
+            ? { ...offer, proposals: Number(offer.proposals || 0) + 1 }
+            : offer
+        )));
+      }
+    }
+  ), [loadOffers]);
 
   const openApplicationForm = (offer) => {
     setSelectedOffer(offer);

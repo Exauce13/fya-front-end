@@ -5,15 +5,11 @@ const links = [
   { to: "/", label: "Accueil", icon: Home },
   { to: "/explorer", label: "Explorer", icon: Search },
   { to: "/offres", label: "Appels d'offres", icon: Briefcase },
+  { to: "/mes-services", label: "Mes Services", icon: ClipboardList },
   { to: "/messages", label: "Messagerie", icon: MessageCircle },
 ];
 
-export default function NavLinks({ theme = "dark", indicators = {}, onNavigate, userRole = "visitor" }) {
-  const visibleLinks =
-    userRole !== "visitor"
-      ? [...links, { to: "/mes-services", label: "Mes Services", icon: ClipboardList }]
-      : links;
-
+export default function NavLinks({ theme = "dark", indicators = {}, onNavigate }) {
   const navClass = ({ isActive }) => {
     if (theme === "light") {
       return isActive
@@ -28,7 +24,7 @@ export default function NavLinks({ theme = "dark", indicators = {}, onNavigate, 
 
   return (
     <nav className="hidden md:flex items-center gap-8">
-      {visibleLinks.map(({ to, label, icon: Icon }) => (
+      {links.map(({ to, label, icon: Icon }) => (
         <NavLink key={to} to={to} onClick={() => onNavigate?.(to)} className={navClass}>
           <Icon size={18} />
           <span className="relative">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, CheckCircle2, CreditCard, FileText, UploadCloud } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CreditCard, FileText, Loader2, UploadCloud } from "lucide-react";
 import { Link } from "react-router-dom";
 import { getApiMessage } from "../../services/apiClient";
 import { requestCertification } from "../../services/artisanService";
@@ -19,6 +19,8 @@ export default function VerificationCenter() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [paid, setPaid] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentReference, setPaymentReference] = useState("");
   const [apiError, setApiError] = useState("");
 
   const updateFile = (field, file) => {
@@ -49,6 +51,7 @@ export default function VerificationCenter() {
 
   const payVerification = async () => {
     setApiError("");
+    setPaymentProcessing(true);
     const formData = new FormData();
     formData.append("nom_association", form.associationName.trim() || "Non renseigné");
     formData.append("telephone_association", form.leaderPhone.trim() || "Non renseigné");
@@ -59,15 +62,23 @@ export default function VerificationCenter() {
 
     try {
       const payload = await requestCertification(formData);
-      const paymentUrl = payload?.payment_url || payload?.url || payload?.payment?.payment_url;
-      localStorage.setItem(verificationStatusKey, "pending");
-      if (paymentUrl) {
-        window.location.href = paymentUrl;
-        return;
+      if (payload?.success === false) {
+        throw new Error(payload?.message || "Impossible de traiter le paiement de vérification.");
       }
+
+      localStorage.setItem(verificationStatusKey, "pending");
+      setPaymentReference(
+        payload?.reference ||
+          payload?.payment?.reference ||
+          payload?.transaction?.reference ||
+          payload?.payment_id ||
+          ""
+      );
       setPaid(true);
     } catch (error) {
       setApiError(getApiMessage(error, "Impossible d'envoyer la demande de vérification."));
+    } finally {
+      setPaymentProcessing(false);
     }
   };
 
@@ -161,10 +172,15 @@ export default function VerificationCenter() {
               {paid ? (
                 <div className="rounded-xl border border-[#bfe5c8] bg-[#E8F7E9] p-6">
                   <CheckCircle2 size={34} className="text-[#267A39]" />
-                  <h2 className="mt-4 text-2xl font-extrabold text-[#267A39]">Demande envoyée</h2>
+                  <h2 className="mt-4 text-2xl font-extrabold text-[#267A39]">Paiement réussi</h2>
                   <p className="mt-2 text-sm font-semibold leading-7 text-[#286039]">
-                    Votre paiement de 1000 FCFA est enregistré. L'équipe FYA analysera votre dossier et activera le badge après validation.
+                    Votre paiement test de 1000 FCFA est enregistré. L'équipe FYA analysera votre dossier et activera le badge après validation.
                   </p>
+                  {paymentReference && (
+                    <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs font-black text-[#286039]">
+                      Référence : {paymentReference}
+                    </p>
+                  )}
                   <Link
                     to="/profile"
                     className="mt-5 inline-flex min-h-11 items-center rounded-md bg-[#267A39] px-5 text-sm font-extrabold text-white"
@@ -179,6 +195,9 @@ export default function VerificationCenter() {
                     <p className="mt-2 text-sm font-semibold leading-7 text-gray-600">
                       Les frais de traitement du dossier sont fixés à 1000 FCFA. Le badge sera activé après vérification manuelle des informations.
                     </p>
+                    <p className="mt-3 rounded-lg border border-[#d9e6f4] bg-[#f6fbff] px-4 py-3 text-sm font-bold leading-6 text-[#145DA0]">
+                      Mode test sandbox : le paiement est simulé et confirmé directement dans FYA.
+                    </p>
                     <div className="mt-5 rounded-lg border border-[#eadfd3] bg-[#fbfaf8] p-4">
                       <p className="text-sm font-extrabold text-gray-500">Récapitulatif</p>
                       <p className="mt-2 text-lg font-black">{form.associationName}</p>
@@ -192,10 +211,20 @@ export default function VerificationCenter() {
                     <button
                       type="button"
                       onClick={payVerification}
-                      className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[#C96B2C] px-5 text-sm font-extrabold text-white transition hover:bg-[#b65e23]"
+                      disabled={paymentProcessing}
+                      className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[#C96B2C] px-5 text-sm font-extrabold text-white transition hover:bg-[#b65e23] disabled:cursor-not-allowed disabled:opacity-70"
                     >
-                      <CreditCard size={18} />
-                      Payer maintenant
+                      {paymentProcessing ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" />
+                          Traitement...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard size={18} />
+                          Confirmer le paiement test
+                        </>
+                      )}
                     </button>
                     {apiError && (
                       <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-600">

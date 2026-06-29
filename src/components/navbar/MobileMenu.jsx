@@ -18,6 +18,7 @@ const links = [
   { to: "/", label: "Accueil", icon: Home },
   { to: "/explorer", label: "Explorer", icon: Search },
   { to: "/offres", label: "Appels d'offres", icon: Briefcase },
+  { to: "/mes-services", label: "Mes Services", icon: ClipboardList },
   { to: "/messages", label: "Messagerie", icon: MessageCircle },
 ];
 
@@ -27,10 +28,6 @@ export default function MobileMenu({ user, theme = "dark", indicators = {}, onNa
   const [open, setOpen] = useState(false);
 
   const close = () => setOpen(false);
-  const visibleLinks =
-    user
-      ? [...links, { to: "/mes-services", label: "Mes Services", icon: ClipboardList }]
-      : links;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -86,7 +83,7 @@ export default function MobileMenu({ user, theme = "dark", indicators = {}, onNa
             )}
 
             <nav>
-              {visibleLinks.map(({ to, label, icon: Icon }) => (
+              {links.map(({ to, label, icon: Icon }) => (
                 <NavLink
                   key={to}
                   to={to}

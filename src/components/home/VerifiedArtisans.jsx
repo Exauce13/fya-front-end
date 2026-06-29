@@ -115,15 +115,15 @@ export default function VerifiedArtisans() {
         actionLink="/explorer?verified=true"
         actionLabel="Voir tous +"
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="flex gap-3 overflow-x-auto pb-2 sm:gap-4 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0 xl:grid-cols-5">
         {loading && (
-          <div className="rounded-lg border border-[#eadfd3] bg-white p-6 text-sm font-bold text-gray-500 sm:col-span-2 lg:col-span-4 xl:col-span-5">
+          <div className="w-full rounded-lg border border-[#eadfd3] bg-white p-6 text-sm font-bold text-gray-500 lg:col-span-4 xl:col-span-5">
             Chargement des artisans vérifiés...
           </div>
         )}
 
         {!loading && artisans.length === 0 && (
-          <div className="rounded-lg border border-[#eadfd3] bg-white p-6 text-sm font-bold text-gray-500 sm:col-span-2 lg:col-span-4 xl:col-span-5">
+          <div className="w-full rounded-lg border border-[#eadfd3] bg-white p-6 text-sm font-bold text-gray-500 lg:col-span-4 xl:col-span-5">
             Aucun artisan vérifié à afficher pour le moment.
           </div>
         )}
@@ -141,39 +141,39 @@ function VerifiedArtisanCard({ artisan }) {
     <Link
       to={`/artisans/${artisan.id}`}
       state={{ artisan }}
-      className="group overflow-hidden rounded-lg border border-[#eadfd3] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group w-[40%] min-w-[40%] max-w-[160px] shrink-0 overflow-hidden rounded-lg border border-[#eadfd3] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:w-[180px] sm:min-w-[180px] sm:max-w-none lg:w-auto lg:min-w-0"
     >
-      <div className="aspect-[4/3] overflow-hidden bg-[#f6f2ed]">
+      <div className="aspect-square overflow-hidden bg-[#f6f2ed] sm:aspect-[4/3]">
         <img
           src={artisan.image || profileAvatar}
           alt={artisan.name}
           onError={(event) => {
             event.currentTarget.src = profileAvatar;
           }}
-          className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.03]"
+          className="h-full w-full object-contain transition duration-200 group-hover:scale-[1.03] sm:object-cover"
         />
       </div>
-      <div className="p-3">
+      <div className="p-2 sm:p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-extrabold text-[#182433]">{artisan.name}</h3>
-            <p className="mt-1 truncate text-xs font-bold text-[#145DA0]">{artisan.job}</p>
+            <h3 className="truncate text-xs font-extrabold text-[#182433] sm:text-sm">{artisan.name}</h3>
+            <p className="mt-0.5 truncate text-[11px] font-bold text-[#145DA0] sm:mt-1 sm:text-xs">{artisan.job}</p>
           </div>
-          <CheckCircle2 size={18} className="shrink-0 text-[#145DA0]" />
+          <CheckCircle2 size={16} className="shrink-0 text-[#145DA0] sm:size-[18px]" />
         </div>
 
-        <p className="mt-3 flex items-center gap-1 truncate text-xs font-semibold text-gray-500">
+        <p className="mt-2 flex items-center gap-1 truncate text-[11px] font-semibold text-gray-500 sm:mt-3 sm:text-xs">
           <MapPin size={13} />
           {artisan.city || "Ville non renseignée"}
           {artisan.district ? `, ${artisan.district}` : ""}
         </p>
 
-        <div className="mt-3 flex items-center justify-between gap-2 text-xs font-bold">
+        <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-bold sm:mt-3 sm:text-xs">
           <span className="inline-flex items-center gap-1 text-[#C96B2C]">
             <Star size={14} className="fill-[#C96B2C]" />
             {artisan.rating}
           </span>
-          <span className="truncate text-gray-500">{artisan.experience}</span>
+          <span className="hidden truncate text-gray-500 sm:inline">{artisan.experience}</span>
         </div>
       </div>
     </Link>

@@ -14,10 +14,12 @@ import {
   uploadVoiceNote,
 } from "../../services/messageService";
 import { getApiMessage, getStorageUrl } from "../../services/apiClient";
+import realtimeService, { onRealtimeEvent, realtimeEvents } from "../../services/realtimeService";
 import { useUserMode } from "../../context/useUserMode";
 import profileAvatar from "../../assets/images/profile-avatar.svg";
 
 const refreshIntervalMs = 1800;
+const realtimeFallbackIntervalMs = 6000;
 const initialVisibleMessages = 35;
 const visibleMessagesStep = 25;
 const openedMessagesKey = "fya-opened-message-ids";
@@ -234,6 +236,7 @@ export default function ClientMessages() {
   const [loading, setLoading] = useState(false);
   const [openingContact, setOpeningContact] = useState(false);
   const [visibleMessageLimits, setVisibleMessageLimits] = useState({});
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
 
   const messages = useMemo(
     () => (activeConversation ? messagesByConversation[activeConversation.id] || [] : []),
@@ -262,6 +265,23 @@ export default function ClientMessages() {
     mergeMessagesIntoConversation(setMessagesByConversation, targetConversationId, items);
 
     return items;
+  }, [user?.id]);
+
+  useEffect(() => {
+    const resetTimerId = window.setTimeout(() => setRealtimeConnected(false), 0);
+    if (!user?.id) return () => window.clearTimeout(resetTimerId);
+
+    const removeConnectedListener = onRealtimeEvent(realtimeEvents.connected, () => setRealtimeConnected(true));
+    const removeDisconnectedListener = onRealtimeEvent(
+      [realtimeEvents.disconnected, realtimeEvents.error],
+      () => setRealtimeConnected(false)
+    );
+
+    return () => {
+      window.clearTimeout(resetTimerId);
+      removeConnectedListener();
+      removeDisconnectedListener();
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -295,13 +315,22 @@ export default function ClientMessages() {
     }
 
     refreshConversations();
-    timerId = setInterval(refreshConversations, refreshIntervalMs);
+    timerId = setInterval(
+      refreshConversations,
+      realtimeConnected ? realtimeFallbackIntervalMs : refreshIntervalMs
+    );
 
     return () => {
       active = false;
-      clearInterval(timerId);
+      if (timerId) clearInterval(timerId);
     };
-  }, [contactId, conversationId, loadConversations, navigate, user?.id]);
+  }, [contactId, conversationId, loadConversations, navigate, realtimeConnected, user?.id]);
+
+  useEffect(() => {
+    if (!realtimeConnected || conversations.length === 0) return undefined;
+
+    realtimeService.subscribeConversations(conversations.map((conversation) => conversation.id));
+  }, [conversations, realtimeConnected]);
 
   useEffect(() => {
     if (!contactId || conversationId || openingContact) return;
@@ -378,13 +407,39 @@ export default function ClientMessages() {
     }
 
     loadMessages();
-    const timerId = setInterval(() => loadMessages({ silent: true }), refreshIntervalMs);
+    if (realtimeConnected) {
+      realtimeService.subscribeConversation(activeConversation.id);
+    }
+    const timerId = setInterval(
+      () => loadMessages({ silent: true }),
+      realtimeConnected ? realtimeFallbackIntervalMs : refreshIntervalMs
+    );
 
     return () => {
       active = false;
       clearInterval(timerId);
     };
-  }, [activeConversation, user?.id]);
+  }, [activeConversation, realtimeConnected, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    return onRealtimeEvent(realtimeEvents.message, (event) => {
+      const detail = event.detail || {};
+      const incomingMessage = detail.message;
+      const targetConversationId = detail.conversationId;
+
+      if (!targetConversationId || !incomingMessage?.id) {
+        loadConversations().catch(() => {});
+        return;
+      }
+
+      mergeMessagesIntoConversation(setMessagesByConversation, targetConversationId, [
+        normalizeMessage(incomingMessage, user.id),
+      ]);
+      loadConversations().catch(() => {});
+    });
+  }, [loadConversations, user?.id]);
 
   const sendMessage = async (options = {}) => {
     const messageText = options.text ?? draft.trim();

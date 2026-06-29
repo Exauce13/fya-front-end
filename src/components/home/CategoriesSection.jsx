@@ -8,15 +8,17 @@ export default function CategoriesSection() {
   const categories = metiers.slice(0, 8).map((metier) => ({ name: metier.name }));
 
   return (
-    <section>
+    <section className="hidden sm:block">
       <SectionHeader
         title="Métiers populaires"
         actionLink="/metiers"
         actionLabel="Voir toutes +"
       />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+      <div className="flex gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-8 lg:overflow-visible lg:pb-0">
         {categories.map((category) => (
-          <CategoryCard key={category.name} category={category} />
+          <div key={category.name} className="w-36 shrink-0 lg:w-auto">
+            <CategoryCard category={category} />
+          </div>
         ))}
       </div>
       {!loading && categories.length === 0 && (

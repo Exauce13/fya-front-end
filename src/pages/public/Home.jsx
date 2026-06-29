@@ -8,7 +8,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#F8F5F1] text-[#182433]">
       <HeroSection />
 
-      <main className="w-full px-0 py-6 sm:px-8 lg:px-10">
+      <main className="w-full px-3 py-5 sm:px-8 sm:py-6 lg:px-10">
         <CategoriesSection />
         <VerifiedArtisans />
         <FeedSection />

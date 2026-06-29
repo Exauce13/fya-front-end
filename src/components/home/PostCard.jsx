@@ -13,7 +13,6 @@ import profileAvatar from "../../assets/images/profile-avatar.svg";
 export default function PostCard({ post, onPostUpdate }) {
   const [localReaction, setLocalReaction] = useState(null);
   const [likePending, setLikePending] = useState(false);
-  const [commentsCount, setCommentsCount] = useState(Number(post?.comments || 0));
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [activeMediaIndex, setActiveMediaIndex] = useState(null);
@@ -25,6 +24,7 @@ export default function PostCard({ post, onPostUpdate }) {
   const data = post;
   const displayedLiked = localReaction?.liked ?? Boolean(data.likedByCurrentUser);
   const displayedLikes = localReaction?.count ?? Number(data.likes || 0);
+  const displayedComments = Number(data.comments || 0);
   const activeMedia = activeMediaIndex === null ? null : data.images[activeMediaIndex];
 
   const openCommentForm = () => {
@@ -46,8 +46,7 @@ export default function PostCard({ post, onPostUpdate }) {
       return;
     }
 
-    const nextCommentsCount = commentsCount + 1;
-    setCommentsCount(nextCommentsCount);
+    const nextCommentsCount = displayedComments + 1;
     onPostUpdate?.(data.id, { comments: nextCommentsCount });
     setCommentText("");
     setShowCommentForm(false);
@@ -93,9 +92,9 @@ export default function PostCard({ post, onPostUpdate }) {
   };
 
   return (
-    <article className="mt-4 rounded-lg border border-[#eadfd3] bg-white p-4 shadow-sm">
+    <article className="mt-4 overflow-hidden rounded-lg border border-[#eadfd3] bg-white p-3 shadow-sm sm:p-4">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <img
             src={data.avatar || profileAvatar}
             alt={data.author}
@@ -104,7 +103,7 @@ export default function PostCard({ post, onPostUpdate }) {
             }}
             className="h-12 w-12 rounded-full object-cover"
           />
-          <div>
+          <div className="min-w-0">
             <h3 className="text-sm font-extrabold">
               <UserNameLink
                 name={data.author}
@@ -115,7 +114,7 @@ export default function PostCard({ post, onPostUpdate }) {
                 {data.author}
               </UserNameLink>
             </h3>
-            <p className="text-xs text-gray-500">{data.meta}</p>
+            <p className="truncate text-xs text-gray-500">{data.meta}</p>
           </div>
         </div>
         <button className="text-gray-400">...</button>
@@ -138,26 +137,28 @@ export default function PostCard({ post, onPostUpdate }) {
           state={{ post: data }}
           className="transition hover:text-[#145DA0]"
         >
-          {commentsCount} commentaires
+          {displayedComments} commentaires
         </Link>
       </div>
-      <div className="grid grid-cols-2 pt-3 text-sm font-semibold text-gray-600">
+      <div className="grid grid-cols-2 pt-3 text-xs font-semibold text-gray-600 sm:text-sm">
         <button
           type="button"
           onClick={toggleLike}
           disabled={likePending}
-          className={`flex items-center justify-center gap-2 py-2 ${
+          className={`flex min-w-0 items-center justify-center gap-1.5 px-1 py-2 sm:gap-2 ${
             displayedLiked ? "text-red-500" : ""
           }`}
         >
-          <Heart size={16} className={displayedLiked ? "fill-red-500" : ""} /> {displayedLiked ? "Je n'aime plus" : "J'aime"}
+          <Heart size={16} className={`shrink-0 ${displayedLiked ? "fill-red-500" : ""}`} />
+          <span className="hidden truncate sm:inline">{displayedLiked ? "Je n'aime plus" : "J'aime"}</span>
         </button>
         <button
           type="button"
           onClick={openCommentForm}
-          className="flex items-center justify-center gap-2 py-2"
+          className="flex min-w-0 items-center justify-center gap-1.5 px-1 py-2 sm:gap-2"
         >
-          <MessageCircle size={16} /> Commenter
+          <MessageCircle size={16} className="shrink-0" />
+          <span className="hidden truncate sm:inline">Commenter</span>
         </button>
       </div>
 
@@ -185,7 +186,7 @@ export default function PostCard({ post, onPostUpdate }) {
               Annuler
             </button>
             <button className="min-h-10 rounded-md bg-[#145DA0] px-4 text-sm font-extrabold text-white">
-              Publier
+              Commenter
             </button>
           </div>
         </form>
@@ -210,50 +211,38 @@ export default function PostCard({ post, onPostUpdate }) {
 }
 
 function PostMediaGrid({ images, onOpenImage }) {
-  const visibleImages = images.slice(0, 4);
-  const remainingCount = Math.max(images.length - visibleImages.length, 0);
   const count = images.length;
+  const visibleLimit = count >= 5 ? 5 : 4;
+  const visibleImages = images.slice(0, visibleLimit);
+  const remainingCount = Math.max(images.length - visibleImages.length, 0);
 
   if (count === 1) {
     return (
-      <div className="mt-4 overflow-hidden rounded-lg border border-[#eadfd3] bg-[#f6f2ed]">
+      <div className="mt-4 overflow-hidden rounded-lg border border-[#eadfd3] bg-white">
         <MediaTile
           image={images[0]}
           index={0}
           onOpenImage={onOpenImage}
-          className="max-h-[420px] w-full sm:max-h-[560px]"
-          mediaClassName="max-h-[420px] w-full object-contain sm:max-h-[560px]"
+          className="w-full"
+          mediaClassName="max-h-[520px] w-full object-contain"
         />
       </div>
     );
   }
 
-  const gridClass =
-    count === 2
-      ? "grid-cols-2"
-      : "grid-cols-2 grid-rows-2";
-  const containerClass =
-    count === 2
-      ? "h-[260px] sm:h-[360px]"
-      : "h-[340px] sm:h-[440px]";
-
   return (
-    <div className={`mt-4 grid ${containerClass} ${gridClass} gap-1 overflow-hidden rounded-lg border border-[#eadfd3] bg-[#eadfd3]`}>
-      {visibleImages.map((image, index) => {
-        const isHero = count === 3 && index === 0;
-
-        return (
-          <MediaTile
-            key={`${image.src}-${index}`}
-            image={image}
-            index={index}
-            onOpenImage={onOpenImage}
-            overlayCount={index === visibleImages.length - 1 ? remainingCount : 0}
-            className={isHero ? "row-span-2" : ""}
-            mediaClassName="h-full w-full object-cover"
-          />
-        );
-      })}
+    <div className="mt-4 columns-2 gap-1 overflow-hidden rounded-lg border border-[#eadfd3] bg-[#eadfd3]">
+      {visibleImages.map((image, index) => (
+        <MediaTile
+          key={`${image.src}-${index}`}
+          image={image}
+          index={index}
+          onOpenImage={onOpenImage}
+          overlayCount={index === visibleImages.length - 1 ? remainingCount : 0}
+          className="mb-1 break-inside-avoid"
+          mediaClassName="w-full object-contain"
+        />
+      ))}
     </div>
   );
 }
@@ -283,7 +272,7 @@ function MediaTile({
     <button
       type="button"
       onClick={() => onOpenImage(index)}
-      className={`group relative min-h-0 bg-[#f6f2ed] ${className}`}
+      className={`group relative block min-h-0 w-full bg-white ${className}`}
       aria-label="Agrandir la photo"
     >
       <img

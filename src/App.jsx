@@ -2,6 +2,7 @@ import "react-phone-number-input/style.css";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/footer/Footer";
+import RealtimeProvider from "./components/realtime/RealtimeProvider.jsx";
 import RoleGate from "./components/routes/RoleGate";
 import ScrollManager from "./components/routes/ScrollManager.jsx";
 import { UserModeProvider } from "./context/UserModeContext";
@@ -48,6 +49,11 @@ function AppShell() {
 
   const isAuthPage = authPaths.includes(location.pathname);
   const isAdminPage = location.pathname.startsWith("/admin");
+  const noFooterPaths = ["/explorer", "/offres", "/messages", "/mes-services"];
+  const shouldShowFooter =
+    !isAuthPage &&
+    !isAdminPage &&
+    !noFooterPaths.some((path) => location.pathname.startsWith(path));
 
   if (user?.role === "admin" && !isAdminPage && !isAuthPage) {
     return <Navigate to="/admin" replace />;
@@ -56,6 +62,7 @@ function AppShell() {
   return (
     <div className="min-h-screen bg-[#F8F5F1]">
       <ScrollManager />
+      <RealtimeProvider user={user} />
       {!isAuthPage && !isAdminPage && <Navbar user={user} />}
       <main>
         <Routes>
@@ -92,7 +99,7 @@ function AppShell() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      {!isAuthPage && !isAdminPage && <Footer />}
+      {shouldShowFooter && <Footer />}
     </div>
   );
 }

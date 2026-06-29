@@ -53,6 +53,8 @@ const initialPortfolio = [];
 const initialPosts = [];
 
 const allowedRealizationExtensions = /\.(jpe?g|png|webp)$/i;
+const maxRealizationSizeMb = 50;
+const maxRealizationSizeBytes = maxRealizationSizeMb * 1024 * 1024;
 
 const getPostItems = (payload) => {
   if (Array.isArray(payload?.posts?.data)) return payload.posts.data;
@@ -674,6 +676,13 @@ export default function ArtisanProfile() {
 
     if (invalidFile) {
       alert("Format invalide. Les réalisations acceptent uniquement jpg, jpeg, png ou webp.");
+      return;
+    }
+
+    const tooLargeFile = selectedFiles.find((file) => file.size > maxRealizationSizeBytes);
+
+    if (tooLargeFile) {
+      alert(`Fichier trop lourd. Chaque réalisation doit faire ${maxRealizationSizeMb} Mo maximum.`);
       return;
     }
 

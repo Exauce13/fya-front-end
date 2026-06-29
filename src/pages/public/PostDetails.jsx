@@ -5,6 +5,7 @@ import { ArrowLeft, Heart, MessageCircle, Send } from "lucide-react";
 import UserNameLink from "../../components/ui/UserNameLink";
 import { createComment, getPostComments, likePost } from "../../services/postsService";
 import { getApiMessage, getStorageUrl } from "../../services/apiClient";
+import { onRealtimeEvent, realtimeEvents } from "../../services/realtimeService";
 import { useUserMode } from "../../context/useUserMode";
 import profileAvatar from "../../assets/images/profile-avatar.svg";
 import { isPostLiked, setPostLiked } from "../../utils/likedPostsStorage";
@@ -52,6 +53,46 @@ export default function PostDetails() {
     return () => {
       active = false;
     };
+  }, [post?.id]);
+
+  useEffect(() => {
+    if (!post?.id) return undefined;
+
+    return onRealtimeEvent(
+      [realtimeEvents.postLiked, realtimeEvents.postCommented],
+      (event) => {
+        const detail = event.detail || {};
+        if (String(detail.postId) !== String(post.id)) return;
+
+        if (event.type === realtimeEvents.postLiked) {
+          setLikeState((current) => {
+            const next = {
+              ...current,
+              count: Number.isFinite(Number(detail.likesCount))
+                ? Number(detail.likesCount)
+                : current.count + 1,
+            };
+            likeStateRef.current = next;
+            return next;
+          });
+          return;
+        }
+
+        const incomingComment = detail.comment;
+        if (!incomingComment) {
+          setComments((current) => current);
+          return;
+        }
+
+        const normalizedComment = normalizeComment(incomingComment);
+        setComments((current) => {
+          if (current.some((comment) => String(comment.id) === String(normalizedComment.id))) {
+            return current;
+          }
+          return [normalizedComment, ...current];
+        });
+      }
+    );
   }, [post?.id]);
 
   if (!post) {
@@ -138,7 +179,7 @@ export default function PostDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F5F1] px-4 pb-10 pt-24 text-[#182433] sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#F8F5F1] px-3 pb-10 pt-24 text-[#182433] sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <button
           type="button"
@@ -149,9 +190,9 @@ export default function PostDetails() {
           Retour
         </button>
 
-        <article className="mt-5 rounded-lg border border-[#eadfd3] bg-white p-5 shadow-sm">
+        <article className="mt-5 overflow-hidden rounded-lg border border-[#eadfd3] bg-white p-3 shadow-sm sm:p-5">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <img
                 src={post.avatar || profileAvatar}
                 alt={post.author}
@@ -160,7 +201,7 @@ export default function PostDetails() {
                 }}
                 className="h-12 w-12 rounded-full object-cover"
               />
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-base font-extrabold">
                   <UserNameLink
                     name={post.author}
@@ -171,7 +212,7 @@ export default function PostDetails() {
                     {post.author}
                   </UserNameLink>
                 </h1>
-                <p className="text-xs text-gray-500">{post.meta}</p>
+                <p className="truncate text-xs text-gray-500">{post.meta}</p>
               </div>
             </div>
             <button className="text-gray-400">...</button>
@@ -204,42 +245,42 @@ export default function PostDetails() {
             <span>{comments.length} commentaires</span>
           </div>
 
-          <div className="grid grid-cols-2 pt-3 text-sm font-semibold text-gray-600">
+          <div className="grid grid-cols-2 pt-3 text-xs font-semibold text-gray-600 sm:text-sm">
             <button
               type="button"
               onClick={toggleLike}
               disabled={likePending}
-              className={`flex items-center justify-center gap-2 py-2 ${
+              className={`flex items-center justify-center gap-1.5 py-2 sm:gap-2 ${
                 likeState.liked ? "text-red-500" : ""
               }`}
             >
-              <Heart size={16} className={likeState.liked ? "fill-red-500" : ""} />
-              {likeState.liked ? "Je n'aime plus" : "J'aime"}
+              <Heart size={16} className={`shrink-0 ${likeState.liked ? "fill-red-500" : ""}`} />
+              <span className="hidden sm:inline">{likeState.liked ? "Je n'aime plus" : "J'aime"}</span>
             </button>
             <span className="flex items-center justify-center gap-2 py-2 text-[#145DA0]">
-              <MessageCircle size={16} />
-              Commentaires
+              <MessageCircle size={16} className="shrink-0" />
+              <span className="hidden sm:inline">Commentaires</span>
             </span>
           </div>
         </article>
 
-        <section className="mt-5 rounded-lg border border-[#eadfd3] bg-white p-5 shadow-sm">
+        <section className="mt-5 overflow-hidden rounded-lg border border-[#eadfd3] bg-white p-3 shadow-sm sm:p-5">
           <h2 className="text-lg font-extrabold text-[#182433]">Commentaires</h2>
 
-          <form onSubmit={addComment} className="mt-4 flex gap-3">
+          <form onSubmit={addComment} className="mt-4 flex gap-2 sm:gap-3">
             <img
               src={user?.avatar || profileAvatar}
               onError={(event) => {
                 event.currentTarget.src = profileAvatar;
               }}
               alt={user?.name || "Utilisateur"}
-              className="h-11 w-11 rounded-full object-cover"
+              className="h-9 w-9 shrink-0 rounded-full object-cover sm:h-11 sm:w-11"
             />
-            <div className="flex flex-1 items-center gap-2 rounded-full bg-[#f6f2ed] px-4">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-[#f6f2ed] px-3 sm:px-4">
               <input
                 value={commentText}
                 onChange={(event) => setCommentText(event.target.value)}
-                className="min-h-12 flex-1 bg-transparent text-sm font-semibold text-[#182433] outline-none placeholder:text-gray-500"
+                className="min-h-11 min-w-0 flex-1 bg-transparent text-sm font-semibold text-[#182433] outline-none placeholder:text-gray-500 sm:min-h-12"
                 placeholder="Ajouter un commentaire..."
               />
               <button
@@ -254,18 +295,18 @@ export default function PostDetails() {
 
           <div className="mt-5 space-y-4">
             {comments.map((comment) => (
-              <article key={comment.id} className="flex gap-3">
+              <article key={comment.id} className="flex min-w-0 gap-2 sm:gap-3">
                 <img
                   src={comment.avatar || profileAvatar}
                   alt={comment.author}
                   onError={(event) => {
                     event.currentTarget.src = profileAvatar;
                   }}
-                  className="h-10 w-10 rounded-full object-cover"
+                  className="h-8 w-8 shrink-0 rounded-full object-cover sm:h-10 sm:w-10"
                 />
-                <div className="flex-1 rounded-lg bg-[#fbfaf8] px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-extrabold">
+                <div className="min-w-0 flex-1 rounded-lg bg-[#fbfaf8] px-3 py-2 sm:px-4 sm:py-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h3 className="min-w-0 truncate text-sm font-extrabold">
                       <UserNameLink
                         name={comment.author}
                         id={comment.authorId}
@@ -276,7 +317,7 @@ export default function PostDetails() {
                     </h3>
                     <span className="text-xs font-semibold text-gray-400">{comment.date}</span>
                   </div>
-                  <p className="mt-1 text-sm font-semibold leading-6 text-gray-600">{comment.text}</p>
+                  <p className="mt-1 break-words text-sm font-semibold leading-6 text-gray-600">{comment.text}</p>
                 </div>
               </article>
             ))}
