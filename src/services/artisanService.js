@@ -52,5 +52,11 @@ export async function getArtisanAvis(artisanId) {
 export async function requestCertification(formData) {
   const response = await apiClient.post("/artisans/demande-certification", formData);
 
-  return getApiData(response);
+  return response.data;
+}
+
+export async function confirmCertificationPayment(reference, params = {}) {
+  const response = await publicApiClient.get(`/fedapay/certification/${reference}/callback`, { params });
+
+  return response.data;
 }

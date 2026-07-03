@@ -175,14 +175,14 @@ export default function Navbar({ user }) {
         {/* Actions */}
         <div className="flex items-center gap-4">
 
-          <div className="hidden items-center gap-4 md:flex">
+          <div className="hidden items-center gap-3 lg:flex xl:gap-4">
             {isAuthenticated ? (
               <ProfileDropdown user={user} theme={theme} />
             ) : (
               <>
               <Link
                 to="/login"
-                className={`rounded-xl border px-5 py-2 transition ${
+                className={`rounded-xl border px-4 py-2 transition xl:px-5 ${
                   isHome
                     ? "border-white/45 text-white hover:bg-white/10"
                     : "border-[#C96B2C]/35 text-[#C96B2C] hover:bg-[#fff3ea]"
@@ -193,7 +193,7 @@ export default function Navbar({ user }) {
 
               <Link
                 to="/register"
-                className="px-5 py-2 rounded-xl bg-[#C96B2C] text-white hover:bg-[#b65e23] transition"
+                className="rounded-xl bg-[#C96B2C] px-4 py-2 text-white transition hover:bg-[#b65e23] xl:px-5"
               >
                 S'inscrire
               </Link>

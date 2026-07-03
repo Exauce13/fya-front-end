@@ -64,7 +64,7 @@ export default function Contact() {
 
         <p className="mt-7 flex items-center gap-2 text-sm font-semibold text-gray-600">
           <MapPin size={17} />
-          Cotonou, Bénin
+          Parakou, Bénin
         </p>
       </main>
     </div>

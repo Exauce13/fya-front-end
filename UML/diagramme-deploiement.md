@@ -1,91 +1,99 @@
-# Diagramme de deploiement - FYA
+# Diagramme de deploiement local - FYA
 
-Ce diagramme presente l'architecture de deploiement de FYA : le frontend React/Vite est deploye sur Vercel, tandis que le backend Laravel est heberge sur InterServer.
+Ce diagramme presente l'architecture de deploiement utilisee dans le cadre du projet FYA. La plateforme est executee entierement en local sur une machine de developpement : le frontend React/Vite, le backend Laravel, la base de donnees et le stockage des fichiers fonctionnent sur l'environnement local.
 
-## Architecture de deploiement
+## Architecture de deploiement local
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial", "fontSize": "14px", "primaryColor": "#EEF6FF", "primaryBorderColor": "#145DA0", "lineColor": "#4B5563", "textColor": "#182433"}, "flowchart": {"curve": "basis", "nodeSpacing": 35, "rankSpacing": 45}}}%%
 flowchart LR
-    U[Utilisateur<br/>Navigateur web ou mobile] -->|HTTPS| V[Vercel<br/>Frontend React + Vite<br/>Build statique + CDN]
+    U[Utilisateur<br/>Navigateur web] -->|http://localhost:5173| FRONT[Serveur local Vite<br/>Frontend React]
 
-    V -->|Requetes API HTTPS<br/>VITE_API_BASE_URL| API[InterServer<br/>Serveur web Apache/Nginx<br/>Backend Laravel REST API]
+    FRONT -->|Requetes HTTP / API<br/>VITE_API_BASE_URL| API[Serveur local Laravel<br/>Backend REST API]
 
-    U -->|Chargement images/fichiers publics<br/>HTTPS| API
+    API -->|Lecture / ecriture| DB[(Base de donnees locale<br/>MySQL)]
+    API -->|Stockage fichiers| FS[(Stockage local Laravel<br/>storage/app/public<br/>public/storage)]
+    API -->|Emails de test| MAIL[Mail local / logs Laravel]
+    API -->|Paiement de test| PAY[Retour sandbox / simulation locale]
 
-    API -->|Lecture / ecriture| DB[(Base de donnees MySQL<br/>Utilisateurs, artisans, clients,<br/>offres, services, messages, avis)]
-    API -->|Stockage fichiers| FS[(Stockage serveur InterServer<br/>public/storage<br/>photos, devis, documents, medias)]
-    API -->|Emails de verification| MAIL[Service SMTP / Email]
-    API -->|Paiements verification<br/>callbacks| PAY[FedaPay]
-    API -->|Broadcasting / notifications| PUSH[Pusher / Laravel Echo]
+    API -->|Reponses JSON| FRONT
+    FRONT -->|Affichage interface| U
 
-    PUSH -->|Evenements temps reel| V
-    PAY -->|Confirmation paiement| API
-    MAIL -->|Lien de verification| U
+    classDef user fill:#E9F7EF,stroke:#1E7E34,color:#182433,font-size:14px
+    classDef app fill:#EEF6FF,stroke:#145DA0,color:#182433,font-size:14px
+    classDef data fill:#FFF4DE,stroke:#B7791F,color:#182433,font-size:14px
+    class U user
+    class FRONT,API app
+    class DB,FS,MAIL,PAY data
 ```
 
 ## Vue UML simplifiee
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial", "fontSize": "14px", "primaryColor": "#EEF6FF", "primaryBorderColor": "#145DA0", "lineColor": "#4B5563", "textColor": "#182433"}, "flowchart": {"curve": "basis", "nodeSpacing": 35, "rankSpacing": 45}}}%%
 flowchart TD
-    subgraph Client["Poste utilisateur"]
+    subgraph Poste["Machine locale de developpement"]
         Browser[Navigateur<br/>Interface FYA]
+
+        subgraph Frontend["Frontend local"]
+            Vite[Vite dev server<br/>React + CSS + assets]
+        end
+
+        subgraph Backend["Backend local"]
+            Laravel[Application Laravel<br/>API REST + Sanctum]
+            Storage[Stockage local<br/>images, videos, PDF, audio]
+            Database[(MySQL local)]
+            Mail[Emails de test<br/>log ou mailer local]
+            Payment[Paiement test<br/>sandbox ou simulation]
+        end
     end
 
-    subgraph Vercel["Plateforme Vercel"]
-        Front[Application React/Vite<br/>HTML, CSS, JS, assets]
-        CDN[CDN Vercel]
-        Front --> CDN
-    end
+    Browser -->|http://localhost:5173| Vite
+    Vite -->|HTTP vers /api| Laravel
+    Laravel -->|Authentification| Laravel
+    Laravel -->|Lecture / ecriture| Database
+    Laravel -->|Upload / lecture fichiers| Storage
+    Laravel -->|Lien reset / verification| Mail
+    Laravel -->|Verification artisan| Payment
+    Laravel -->|JSON + URLs medias| Vite
+    Vite -->|Pages FYA| Browser
 
-    subgraph InterServer["Hebergement InterServer"]
-        Web[Serveur web<br/>Apache ou Nginx]
-        Laravel[Application Laravel<br/>API REST + Sanctum]
-        Storage[Stockage public<br/>images, videos, PDF, audio]
-        Database[(MySQL)]
-        Web --> Laravel
-        Laravel --> Database
-        Laravel --> Storage
-    end
-
-    subgraph Services["Services externes"]
-        Email[Service email SMTP]
-        Fedapay[FedaPay]
-        Realtime[Pusher / WebSocket]
-    end
-
-    Browser -->|HTTPS| CDN
-    CDN -->|Livre le frontend| Browser
-    Browser -->|HTTPS /api| Web
-    Browser -->|Bearer token Sanctum| Laravel
-    Laravel -->|Verification email| Email
-    Laravel -->|Paiement certification| Fedapay
-    Fedapay -->|Callback paiement| Laravel
-    Laravel -->|Evenements| Realtime
-    Realtime -->|Notifications / messages| Browser
+    classDef node fill:#EEF6FF,stroke:#145DA0,color:#182433,font-size:14px
+    classDef data fill:#FFF4DE,stroke:#B7791F,color:#182433,font-size:14px
+    class Browser,Vite,Laravel node
+    class Storage,Database,Mail,Payment data
 ```
 
-## Flux de deploiement
+## Flux de lancement local
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial", "fontSize": "14px", "primaryColor": "#EEF6FF", "primaryBorderColor": "#145DA0", "lineColor": "#4B5563", "textColor": "#182433"}, "flowchart": {"curve": "basis", "nodeSpacing": 30, "rankSpacing": 42}}}%%
 flowchart TD
-    A([Debut]) --> B[Developpeur pousse le code frontend sur GitHub]
-    B --> C[Vercel detecte le commit]
-    C --> D[Installer les dependances frontend]
-    D --> E[Executer le build React/Vite]
-    E --> F[Publier les fichiers statiques sur le CDN Vercel]
+    A([Debut]) --> B[Installer les dependances frontend]
+    B --> C[Configurer .env frontend]
+    C --> D[Definir VITE_API_BASE_URL]
+    D --> E[Lancer npm run dev]
 
-    A --> G[Developpeur pousse ou transfere le backend Laravel vers InterServer]
-    G --> H[Configurer le fichier .env Laravel]
-    H --> I[Installer les dependances Composer]
-    I --> J[Executer migrations et configuration de stockage]
-    J --> K[Configurer le serveur web vers le dossier public Laravel]
+    A --> F[Installer les dependances backend]
+    F --> G[Configurer .env Laravel]
+    G --> H[Configurer MySQL local]
+    H --> I[Executer migrations et seeders]
+    I --> J[Creer le lien de stockage]
+    J --> K[Lancer le serveur Laravel]
 
-    F --> L[Configurer VITE_API_BASE_URL vers l'URL InterServer /api]
-    K --> M[Configurer CORS et Sanctum pour autoriser le domaine Vercel]
-    L --> N[Frontend disponible en production]
-    M --> O[Backend disponible en production]
-    N --> P[Utilisateur accede a FYA]
-    O --> P
-    P --> Q([Fin])
+    E --> L[Frontend disponible en local]
+    K --> M[API disponible en local]
+    L --> N[Ouvrir le navigateur]
+    M --> N
+    N --> O[Tester les parcours FYA]
+    O --> P([Fin])
+
+    classDef start fill:#E9F7EF,stroke:#1E7E34,color:#182433,font-size:14px
+    classDef action fill:#EEF6FF,stroke:#145DA0,color:#182433,font-size:14px
+    class A,P start
+    class B,C,D,E,F,G,H,I,J,K,L,M,N,O action
 ```
 
+## Remarque pour le memoire
+
+Dans ce contexte, il ne s'agit pas d'un deploiement en production. Le diagramme montre plutot un deploiement local de developpement, ou tous les composants sont executes sur la meme machine. Les plateformes comme Vercel, InterServer ou un CDN ne sont donc pas representees.

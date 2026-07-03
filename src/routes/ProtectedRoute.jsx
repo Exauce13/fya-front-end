@@ -1,13 +1,5 @@
-import { Navigate } from 'react-router-dom'
+import RoleGate from "../components/routes/RoleGate";
 
-function ProtectedRoute({ children }) {
-  const token = localStorage.getItem('token')
-
-  if (!token) {
-    return <Navigate to="/login" replace />
-  }
-
-  return children
+export default function ProtectedRoute({ children }) {
+  return <RoleGate>{children}</RoleGate>;
 }
-
-export default ProtectedRoute

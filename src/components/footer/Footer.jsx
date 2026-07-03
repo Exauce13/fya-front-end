@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
-import { Link } from "react-router-dom";
 
 import logo from "../../assets/images/logo.webp";
+import FooterLinks from "./FooterLinks";
+import SocialLinks from "./SocialLinks";
 
 const columns = [
   { title: "Navigation", items: ["Accueil", "Explorer", "Appels d'offres", "A propos", "Contact"] },
@@ -49,11 +50,6 @@ const socialLinks = [
 ];
 
 export default function Footer() {
-  const [translatedToEnglish, setTranslatedToEnglish] = useState(() => {
-    if (typeof document === "undefined") return false;
-    return document.cookie.includes("googtrans=/fr/en");
-  });
-
   useEffect(() => {
     if (document.getElementById(googleTranslateScriptId)) return;
 
@@ -77,22 +73,6 @@ export default function Footer() {
     document.body.appendChild(script);
   }, []);
 
-  const setGoogleTranslateCookie = (value) => {
-    const hostname = window.location.hostname;
-    document.cookie = `googtrans=${value};path=/`;
-
-    if (hostname && hostname !== "localhost") {
-      document.cookie = `googtrans=${value};path=/;domain=.${hostname}`;
-    }
-  };
-/* 
-  const translatePage = () => {
-    const nextValue = translatedToEnglish ? "/fr/fr" : "/fr/en";
-    setGoogleTranslateCookie(nextValue);
-    setTranslatedToEnglish(!translatedToEnglish);
-    window.location.reload();
-  }; */
-
   return (
     <footer className="mt-8 bg-[#062033] text-white">
       <div className="grid w-full gap-8 px-6 py-10 sm:px-8 md:grid-cols-[1.6fr_1fr_1fr_1.2fr] lg:px-10">
@@ -101,50 +81,10 @@ export default function Footer() {
           <p className="mt-4 max-w-xs text-sm leading-6 text-white/72">
             La plateforme qui facilite le savoir-faire des artisans béninois.
           </p>
-          <div className="mt-5 flex gap-3 text-white/80">
-            {socialLinks.map(({ label, href, icon: Icon }) => (
-              <a
-                key={label}
-                href={href}
-                target={href.startsWith("http") ? "_blank" : undefined}
-                rel={href.startsWith("http") ? "noreferrer" : undefined}
-                aria-label={label}
-                className="grid h-8 w-8 place-items-center rounded-full border border-white/20 text-white/85 transition hover:border-white/50 hover:bg-white/10 hover:text-white"
-              >
-                <Icon size={17} />
-              </a>
-            ))}
-          </div>
+          <SocialLinks links={socialLinks} />
         </div>
 
-        {columns.map((column) => (
-          <div key={column.title}>
-            <h3 className="text-sm font-extrabold">{column.title}</h3>
-            <div className="mt-4 space-y-2 text-sm text-white/72">
-              {column.items.map((item) => (
-                footerRoutes[item] ? (
-                  <Link key={item} to={footerRoutes[item]} className="block hover:text-white">
-                    {item}
-                  </Link>
-                ) : (
-                  <p key={item}>{item}</p>
-                )
-              ))}
-              {/* {column.title === "Ressources" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={translatePage}
-                    className="block text-left transition hover:text-white"
-                  >
-                    {translatedToEnglish ? "Revenir en français" : "Traduire en anglais"}
-                  </button>
-                  <div id={googleTranslateElementId} className="hidden" />
-                </>
-              )} */}
-            </div>
-          </div>
-        ))}
+        <FooterLinks columns={columns} routes={footerRoutes} />
 
         <div>
           <h3 className="text-sm font-extrabold">Contact</h3>

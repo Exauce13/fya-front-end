@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +56,7 @@ const loginSchema = z.object({
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const rememberedLogin = getRememberedLogin();
 
   const [showPassword, setShowPassword] =
@@ -63,6 +64,7 @@ export default function LoginForm() {
 
   const [apiError, setApiError] =
     useState("");
+  const successMessage = location.state?.message || "";
 
   const {
     register,
@@ -146,6 +148,11 @@ export default function LoginForm() {
             {apiError && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl">
                 {apiError}
+              </div>
+            )}
+            {successMessage && (
+              <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+                {successMessage}
               </div>
             )}
 

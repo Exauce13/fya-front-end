@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import logo from "../../assets/images/logo.webp";
@@ -106,13 +106,12 @@ export default function ClientRegisterForm() {
   ] = useState(false);
   const [formStatus, setFormStatus] = useState(null);
   const [successDialog, setSuccessDialog] = useState({ open: false, message: "" });
-  const submitLockedRef = useRef(false);
+  const [submitLocked, setSubmitLocked] = useState(false);
 
   const {
     register,
     control,
     handleSubmit,
-    watch,
     setError,
     formState: {
       errors,
@@ -123,12 +122,12 @@ export default function ClientRegisterForm() {
     mode: "onChange",
   });
 
-  const password = watch("password", "");
-  const confirmPassword = watch("confirm_password", "");
+  const password = useWatch({ control, name: "password", defaultValue: "" });
+  const confirmPassword = useWatch({ control, name: "confirm_password", defaultValue: "" });
 
   const onSubmit = async (data) => {
-    if (submitLockedRef.current) return;
-    submitLockedRef.current = true;
+    if (submitLocked) return;
+    setSubmitLocked(true);
     setFormStatus(null);
 
     try {
@@ -139,7 +138,7 @@ export default function ClientRegisterForm() {
       });
     } catch (error) {
       console.error(error);
-      submitLockedRef.current = false;
+      setSubmitLocked(false);
       const validationErrors = getApiValidationErrors(error);
       const fieldMap = {
         telephone: "tel",
@@ -245,7 +244,7 @@ export default function ClientRegisterForm() {
       {...field}
       international
       defaultCountry="BJ"
-      countries={undefined}
+      countries={["BJ"]}
       placeholder="Entrer votre numéro"
       className={`
         phone-input
@@ -421,6 +420,18 @@ export default function ClientRegisterForm() {
               ? "Inscription..."
               : "S'inscrire"}
           </button>
+
+          <div className="space-y-2 text-center text-sm font-semibold">
+            <p className="text-gray-600">
+              Déjà un compte ?{" "}
+              <Link to="/login" className="font-extrabold text-[#145DA0] hover:underline">
+                Se connecter
+              </Link>
+            </p>
+            <Link to="/forget-password" className="font-extrabold text-[#145DA0] hover:underline">
+              Mot de passe oublié ?
+            </Link>
+          </div>
         </form>
       </div>
     </div>

@@ -143,3 +143,23 @@ export async function updatePassword(data) {
 
   return getApiData(response);
 }
+
+export async function requestPasswordReset(email) {
+  const response = await publicApiClient.post("/forgot-password", {
+    email,
+  });
+
+  return getApiData(response);
+}
+
+export async function resetPassword(data) {
+  const response = await publicApiClient.post("/reset-password", {
+    token: data.token,
+    email: data.email,
+    password: data.password,
+    password_confirmation: data.confirm_password,
+    confirm_password: data.confirm_password,
+  });
+
+  return getApiData(response);
+}

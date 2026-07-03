@@ -130,6 +130,16 @@ export async function getNotifications() {
   return getApiData(response);
 }
 
+export async function getAdminNotifications(params = {}) {
+  const response = await apiClient.get("/admin/notifications", { params });
+  return response.data;
+}
+
+export async function markAllAdminNotificationsAsRead() {
+  const response = await apiClient.patch("/admin/notifications/tout-lire");
+  return getApiData(response);
+}
+
 export async function markAllNotificationsAsRead() {
   const response = await apiClient.patch("/notifications/tout-lire");
   return getApiData(response);

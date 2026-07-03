@@ -23,7 +23,7 @@ export default function NavLinks({ theme = "dark", indicators = {}, onNavigate }
   };
 
   return (
-    <nav className="hidden md:flex items-center gap-8">
+    <nav className="hidden items-center gap-5 lg:flex xl:gap-8">
       {links.map(({ to, label, icon: Icon }) => (
         <NavLink key={to} to={to} onClick={() => onNavigate?.(to)} className={navClass}>
           <Icon size={18} />

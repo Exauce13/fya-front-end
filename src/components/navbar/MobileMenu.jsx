@@ -48,7 +48,7 @@ export default function MobileMenu({ user, theme = "dark", indicators = {}, onNa
   }, [open]);
 
   return (
-    <div ref={menuRef} className="md:hidden">
+    <div ref={menuRef} className="lg:hidden">
       <button
         className={`grid h-11 w-11 place-items-center rounded-xl border transition ${
           theme === "light"
@@ -62,7 +62,7 @@ export default function MobileMenu({ user, theme = "dark", indicators = {}, onNa
       </button>
 
       {open && (
-        <div className="fixed right-4 top-[72px] z-[70] w-[min(330px,calc(100vw-32px))] md:hidden">
+        <div className="fixed right-4 top-[72px] z-[70] w-[min(330px,calc(100vw-32px))] lg:hidden">
           <div className="overflow-hidden rounded-xl border border-[#eadfd3] bg-white shadow-sm">
             {user && (
               <div className="border-b border-[#eadfd3] p-4">

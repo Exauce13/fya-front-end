@@ -1,6 +1,8 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { isValidPhoneNumber } from "react-phone-number-input";
+import PhoneInput from "react-phone-number-input";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import logo from "../../assets/images/logo.webp";
@@ -18,7 +20,16 @@ const artisanSchema = z
 
     tel: z
       .string()
-      .regex(/^01[4569]\d{7}$/, "Le numéro doit contenir 10 chiffres et commencer par 014, 015, 016 ou 019"),
+      .min(1, "Le numéro est obligatoire")
+      .refine((value) => isValidPhoneNumber(value), {
+        message: "Numéro de téléphone invalide",
+      })
+      .refine(
+        (value) => value.replace(/\s/g, "").replace(/^\+229/, "").replace(/^229/, "").match(/^01[4569]\d{7}$/),
+        {
+          message: "Le numéro doit commencer par 014, 015, 016 ou 019",
+        }
+      ),
     email: z
       .string()
       .email("Veuillez saisir une adresse email valide"),
@@ -74,13 +85,13 @@ export default function ArtisanRegisterForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formStatus, setFormStatus] = useState(null);
   const [successDialog, setSuccessDialog] = useState({ open: false, message: "" });
-  const submitLockedRef = useRef(false);
+  const [submitLocked, setSubmitLocked] = useState(false);
   const { metiers, loading: metiersLoading } = useMetiers();
 
   const {
     register,
+    control,
     handleSubmit,
-    watch,
     setError,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -88,12 +99,12 @@ export default function ArtisanRegisterForm() {
     mode: "onChange",
   });
 
-  const password = watch("password", "");
-  const confirmPassword = watch("confirm_password", "");
+  const password = useWatch({ control, name: "password", defaultValue: "" });
+  const confirmPassword = useWatch({ control, name: "confirm_password", defaultValue: "" });
 
   const onSubmit = async (data) => {
-    if (submitLockedRef.current) return;
-    submitLockedRef.current = true;
+    if (submitLocked) return;
+    setSubmitLocked(true);
     setFormStatus(null);
 
     try {
@@ -104,7 +115,7 @@ export default function ArtisanRegisterForm() {
       });
     } catch (error) {
       console.error(error);
-      submitLockedRef.current = false;
+      setSubmitLocked(false);
       const validationErrors = getApiValidationErrors(error);
       const fieldMap = {
         telephone: "tel",
@@ -200,11 +211,24 @@ export default function ArtisanRegisterForm() {
               Téléphone
             </label>
 
-            <input
-              type="text"
-              maxLength={10}
-              {...register("tel")}
-              className={inputClass(errors.tel)}
+            <Controller
+              name="tel"
+              control={control}
+              defaultValue=""
+              render={({ field }) => (
+                <PhoneInput
+                  {...field}
+                  international
+                  defaultCountry="BJ"
+                  countries={["BJ"]}
+                  placeholder="Entrer votre numéro"
+                  className={`phone-input w-full rounded-lg border bg-white px-3 py-3 focus-within:ring-2 ${
+                    errors.tel
+                      ? "border-red-500 focus-within:ring-red-500"
+                      : "border-gray-300 focus-within:ring-blue-500"
+                  }`}
+                />
+              )}
             />
 
             {errors.tel && (
@@ -449,6 +473,18 @@ export default function ArtisanRegisterForm() {
               ? "Inscription..."
               : "S'inscrire"}
           </button>
+
+          <div className="space-y-2 text-center text-sm font-semibold">
+            <p className="text-gray-600">
+              Déjà un compte ?{" "}
+              <Link to="/login" className="font-extrabold text-[#145DA0] hover:underline">
+                Se connecter
+              </Link>
+            </p>
+            <Link to="/forget-password" className="font-extrabold text-[#145DA0] hover:underline">
+              Mot de passe oublié ?
+            </Link>
+          </div>
         </form>
       </div>
     </div>

@@ -38,9 +38,8 @@ const defaultArtisan = {
   reviews: 0,
   services: 0,
   memberSince: "",
+  verificationPending: false,
 };
-
-const verificationStatusKey = "fya-artisan-verification-status";
 
 const filters = [
   { id: "all", label: "Tous", icon: Rows3 },
@@ -203,6 +202,22 @@ const getCompletedServicesCountFromPayload = (payload) => {
   return null;
 };
 
+const hasVerificationRequest = (...sources) =>
+  sources.some((source) => Boolean(
+    source &&
+    !source.is_certifed &&
+    !source.is_certified &&
+    (
+      source.diplome ||
+      source.piece_identites ||
+      source.piece_identite ||
+      source.nom_association ||
+      source.telephone_association ||
+      source.verification_status === "pending" ||
+      source.statut_verification === "en_attente"
+    )
+  ));
+
 const normalizeVisitedArtisan = (artisan = {}, fallbackId = "") => {
   const raw = artisan.raw || artisan;
   const user = raw.user || artisan.user || {};
@@ -220,6 +235,7 @@ const normalizeVisitedArtisan = (artisan = {}, fallbackId = "") => {
     bio: artisan.bio || raw.bio || "",
     photo: getStorageUrl(artisan.image || raw.photo || user.photo) || profileAvatar,
     verified: Boolean(artisan.verified || raw.is_certifed || raw.is_certified),
+    verificationPending: hasVerificationRequest(artisan, raw, user),
     rating: `${artisan.rating || raw.rating || 0}/5`,
     reviews: Number(artisan.reviews || raw.reviews || 0),
     services: getCompletedServicesCount(artisan, raw, user),
@@ -249,6 +265,7 @@ const normalizeBackendArtisan = (backendArtisan = {}, metiersById = {}) => {
     bio: backendArtisan.bio || user.bio || "",
     photo: getStorageUrl(user.photo || backendArtisan.photo) || profileAvatar,
     verified: Boolean(backendArtisan.is_certifed || backendArtisan.is_certified),
+    verificationPending: hasVerificationRequest(backendArtisan, user),
     services: getCompletedServicesCount(backendArtisan, user),
     email: user.email || backendArtisan.email || "",
     telephone: user.telephone || backendArtisan.telephone || "",
@@ -348,6 +365,7 @@ export default function ArtisanProfile() {
     bio: artisanData.bio || user?.bio || "",
     photo: getStorageUrl(user?.photo) || user?.avatar || profileAvatar,
     verified: Boolean(artisanData.is_certifed || artisanData.is_certified || user?.is_certifed),
+    verificationPending: hasVerificationRequest(artisanData, user),
     rating: user?.rating || "0/5",
     reviews: user?.reviews_count || user?.avis_count || 0,
     services: getCompletedServicesCount(user, artisanData),
@@ -372,6 +390,7 @@ export default function ArtisanProfile() {
         bio: visitedArtisan.bio,
         photo: visitedArtisan.photo,
         verified: visitedArtisan.verified,
+        verificationPending: Boolean(visitedArtisan.verificationPending),
         rating: visitedArtisan.rating,
         reviews: visitedArtisan.reviews,
         email: visitedArtisan.email,
@@ -400,9 +419,7 @@ export default function ArtisanProfile() {
     ? buildRoutedArtisanSeed(slug)
     : ownProfileSeed;
   const [artisan, setArtisan] = useState(profileSeed);
-  const [verificationPending] = useState(() => (
-    !profileSeed.verified && localStorage.getItem(verificationStatusKey) === "pending"
-  ));
+  const verificationPending = !artisan.verified && Boolean(artisan.verificationPending);
   const [activeFilter, setActiveFilter] = useState("all");
   const [visitorMode] = useState(Boolean(slug || publicArtisan || routedArtisan));
   const [aboutForm, setAboutForm] = useState({
