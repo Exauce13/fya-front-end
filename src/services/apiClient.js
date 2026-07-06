@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://192.168.1.85:8081/api";
+  import.meta.env.VITE_API_BASE_URL || "http://192.168.1.85:8000/api";
 
 const authTokenKey = "fya-auth-token";
 const authUserKey = "fya-auth-user";

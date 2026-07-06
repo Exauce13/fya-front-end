@@ -5,6 +5,9 @@ Ces diagrammes sont prepares pour une soutenance. Ils decrivent les principaux p
 ## 1. Inscription et verification email
 
 ```mermaid
+%%{init: {'themeVariables': { 'fontSize': '20px'}}}%%
+flowchart TD
+A[Texte en 20px] --> B(Autre texte)
 sequenceDiagram
     actor U as Utilisateur
     participant F as Frontend React
