@@ -4,6 +4,7 @@ import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import AdminTable, { StatusPill } from "../../components/admin/AdminTable";
 import { activateAdminUser, getAdminUsers, suspendAdminUser } from "../../services/adminService";
 import { getApiMessage, getPaginatedItems, getStorageUrl } from "../../services/apiClient";
+import profileAvatar from "../../assets/images/profile-avatar.svg";
 
 const normalizeUser = (user) => ({
   id: user.id || user.reference,
@@ -12,7 +13,7 @@ const normalizeUser = (user) => ({
   city: user.city || user.ville || "",
   status: user.status || user.statut_compte || user.account_status || "Actif",
   joined: user.joined || (user.created_at ? new Date(user.created_at).toLocaleDateString("fr-FR") : ""),
-  avatar: getStorageUrl(user.avatar || user.photo),
+  avatar: getStorageUrl(user.avatar || user.photo || user.image) || profileAvatar,
 });
 
 export default function UsersManagement() {
@@ -75,7 +76,14 @@ export default function UsersManagement() {
             label: "Utilisateur",
             render: (row) => (
               <div className="flex items-center gap-3">
-                <img src={row.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
+                <img
+                  src={row.avatar}
+                  alt=""
+                  className="h-11 w-11 rounded-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.src = profileAvatar;
+                  }}
+                />
                 <div>
                   <p className="font-black">{row.name}</p>
                   <p className="text-xs text-[#75695F]">{row.id}</p>

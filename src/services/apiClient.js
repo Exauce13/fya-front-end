@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://192.168.1.85:8000/api";
+  import.meta.env.VITE_API_BASE_URL || "http://192.168.1.104:8000/api";
 
 const authTokenKey = "fya-auth-token";
 const authUserKey = "fya-auth-user";
@@ -86,10 +86,32 @@ export const getApiData = (response) => response.data?.data ?? response.data;
 
 export const getStorageUrl = (path) => {
   if (!path) return "";
-  if (/^https?:\/\//i.test(path)) return path;
+  if (Array.isArray(path)) {
+    return path.map(getStorageUrl).find(Boolean) || "";
+  }
+
+  if (typeof path === "object") {
+    return getStorageUrl(path.url || path.path || path.src || path.file || path.filename || path.name);
+  }
+
+  const value = String(path).trim();
+  if (!value) return "";
+
+  if ((value.startsWith("[") || value.startsWith("{")) && value.length > 1) {
+    try {
+      return getStorageUrl(JSON.parse(value));
+    } catch {
+      // La valeur ressemble a du JSON mais reste peut-etre un chemin valide.
+    }
+  }
+
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
 
   const apiOrigin = API_BASE_URL.replace(/\/api\/?$/, "");
-  return `${apiOrigin}/storage/${String(path).replace(/^\/?storage\/?/, "")}`;
+  if (value.startsWith("/storage/")) return `${apiOrigin}${value}`;
+  if (value.startsWith("/")) return `${apiOrigin}${value}`;
+
+  return `${apiOrigin}/storage/${value.replace(/^storage\/?/, "")}`;
 };
 
 export const getPaginatedItems = (payload) => {

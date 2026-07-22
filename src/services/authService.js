@@ -29,17 +29,72 @@ const normalizeLocation = (value) =>
     .slice(0, 50) || value;
 const isNumericId = (value) => /^\d+$/.test(String(value || ""));
 
-export async function login(credentials) {
-  const response = await apiClient.post("/login", {
-    email: credentials.telemail,
+const normalizeRole = (user) => String(user?.statut || user?.role || "").toLowerCase();
+
+const isAdminUser = (user) =>
+  ["admin", "admins", "administrateur", "administrateurs"].includes(normalizeRole(user));
+
+const buildOtpChallenge = (payload, email, remember = false) => ({
+  requiresOtp: true,
+  email,
+  remember,
+  message: payload?.message || "Un code OTP a ete envoye a votre adresse email.",
+  expiresInMinutes: payload?.expires_in_minutes,
+  redirectUrl: payload?.redirect_url,
+  payload,
+});
+
+export async function requestAdminOtp(credentials) {
+  const email = credentials.telemail || credentials.email;
+  const response = await publicApiClient.post("/admin/login", {
+    email,
     password: credentials.password,
+  });
+  const payload = getApiData(response);
+
+  if (!payload?.requires_otp) {
+    throw new Error(payload?.message || "Impossible d'envoyer le code OTP admin.");
+  }
+
+  return buildOtpChallenge(payload, email, credentials.remember);
+}
+
+export async function verifyAdminOtp({ email, otp, remember = false }) {
+  const response = await publicApiClient.post("/admin/otp/verify", {
+    email,
+    otp,
   });
   const payload = getApiData(response);
   const token = extractToken(response.data) || extractToken(payload);
   const user = extractUser(response.data) || extractUser(payload);
 
   if (!token || !user) {
+    throw new Error(response.data?.message || "Code OTP invalide ou expire.");
+  }
+
+  authStorage.setSession({ token, user }, remember);
+  return { token, user, payload };
+}
+
+export async function login(credentials) {
+  const response = await publicApiClient.post("/login", {
+    email: credentials.telemail,
+    password: credentials.password,
+  });
+  const payload = getApiData(response);
+  if (payload?.requires_otp) {
+    return buildOtpChallenge(payload, credentials.telemail, credentials.remember);
+  }
+
+  const token = extractToken(response.data) || extractToken(payload);
+  const user = extractUser(response.data) || extractUser(payload);
+
+  if (!token || !user) {
     throw new Error(response.data?.message || "Email ou mot de passe incorrect.");
+  }
+
+  if (isAdminUser(user)) {
+    return requestAdminOtp(credentials);
   }
 
   authStorage.setSession({ token, user }, credentials.remember);

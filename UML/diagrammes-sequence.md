@@ -6,8 +6,6 @@ Ces diagrammes sont prepares pour une soutenance. Ils decrivent les principaux p
 
 ```mermaid
 %%{init: {'themeVariables': { 'fontSize': '20px'}}}%%
-flowchart TD
-A[Texte en 20px] --> B(Autre texte)
 sequenceDiagram
     actor U as Utilisateur
     participant F as Frontend React
@@ -129,51 +127,72 @@ sequenceDiagram
     F-->>U: Affiche la page detail publication
 ```
 
-## 5. Appel d'offres et candidature artisan
+## 5. Publier un appel d'offres
 
 ```mermaid
 sequenceDiagram
     actor C as Client
+    participant F as Frontend React
+    participant API as API Laravel
+    participant DB as Base de donnees
+    participant Storage as Stockage fichiers
+
+    C->>F: S'authentifie avec email et mot de passe
+    F->>API: POST /api/login
+    API->>DB: Verifie le compte client
+    API-->>F: Token Sanctum + client authentifie
+    F->>F: Stocke la session du client
+
+    C->>F: Remplit le formulaire d'appel d'offres
+    C->>F: Ajoute les images ou pieces jointes
+    C->>F: Clique sur Publier
+    F->>API: POST /api/appeloffres/appeloffres
+    API->>API: Verifie le token et le role client
+    API->>API: Valide les informations de l'offre
+    API->>Storage: Stocke les images jointes
+    API->>DB: Enregistre AppelOffre
+    API-->>F: Appel d'offres cree
+    F-->>C: Affiche dans Mes appels d'offres
+    F-->>C: Affiche la confirmation de publication
+```
+
+## 6. Candidater a un appel d'offres
+
+```mermaid
+sequenceDiagram
     actor A as Artisan
     participant F as Frontend React
     participant API as API Laravel
     participant DB as Base de donnees
     participant Storage as Stockage fichiers
 
-    C->>F: Publie un appel d'offres
-    F->>API: POST /api/appeloffres/appeloffres
-    API->>Storage: Stocke les images jointes
-    API->>DB: Enregistre AppelOffre
-    API-->>F: Appel d'offres cree
-    F-->>C: Affiche dans Mes appels d'offres
+    A->>F: S'authentifie avec email et mot de passe
+    F->>API: POST /api/login
+    API->>DB: Verifie le compte artisan
+    API-->>F: Token Sanctum + artisan authentifie
+    F->>F: Stocke la session de l'artisan
 
     A->>F: Ouvre Tous les appels d'offres
     F->>API: GET /api/appeloffres/feed-appels-offres
+    API->>API: Verifie le token et le role artisan
     API->>DB: Filtre par metier de l'artisan
     API-->>F: Appels d'offres compatibles
     F-->>A: Affiche les offres
 
-    A->>F: Postule avec description et devis PDF
+    A->>F: Selectionne un appel d'offres
+    F-->>A: Affiche le detail de l'offre
+    A->>F: Remplit la description et joint le devis PDF
+    A->>F: Clique sur Postuler
     F->>API: POST /api/appeloffres/appels-offres/{appelOffre}/postuler
+    API->>API: Verifie le token et le role artisan
+    API->>API: Verifie que l'artisan n'a pas deja postule
     API->>Storage: Stocke le devis PDF
     API->>DB: Enregistre Candidature
     API-->>F: Candidature envoyee
     F-->>A: Bouton devient "Candidature envoyee"
-
-    C->>F: Ouvre son appel d'offres
-    F->>API: GET /api/appeloffres/mes-appels-offres
-    API->>DB: Recupere offres + candidatures
-    API-->>F: Liste des candidatures
-    F-->>C: Affiche artisans, description et devis telechargeable
-
-    C->>F: Accepte une candidature
-    F->>API: PATCH /api/appeloffres/candidatures/{candidature}/accepter
-    API->>DB: Accepte candidature et cloture l'appel
-    API-->>F: Appel cloture
-    F-->>C: Redirection vers appels d'offres
 ```
 
-## 6. Messagerie texte, image, video et note vocale
+## 7. Messagerie texte, image, video et note vocale
 
 ```mermaid
 sequenceDiagram
@@ -220,7 +239,7 @@ sequenceDiagram
     end
 ```
 
-## 7. Creation et suivi d'un service depuis la messagerie
+## 8. Creation et suivi d'un service depuis la messagerie
 
 ```mermaid
 sequenceDiagram
@@ -277,7 +296,7 @@ sequenceDiagram
     API-->>F: Avis enregistre
 ```
 
-## 8. Verification artisan et validation admin
+## 9. Verification artisan et validation admin
 
 ```mermaid
 sequenceDiagram
@@ -322,7 +341,7 @@ sequenceDiagram
     end
 ```
 
-## 9. Signalement utilisateur et traitement admin
+## 10. Signalement utilisateur et traitement admin
 
 ```mermaid
 sequenceDiagram
@@ -358,7 +377,7 @@ sequenceDiagram
     end
 ```
 
-## 10. Administration globale
+## 11. Administration globale
 
 ```mermaid
 sequenceDiagram
@@ -400,4 +419,3 @@ sequenceDiagram
     API->>DB: Recupere appels d'offres
     API-->>F: Liste appels d'offres
 ```
-

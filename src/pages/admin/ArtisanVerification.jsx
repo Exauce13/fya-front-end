@@ -4,12 +4,24 @@ import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import AdminTable, { StatusPill } from "../../components/admin/AdminTable";
 import { cancelAdminVerification, getAdminVerifications, validateAdminVerification } from "../../services/adminService";
 import { getApiMessage, getPaginatedItems, getStorageUrl } from "../../services/apiClient";
+import profileAvatar from "../../assets/images/profile-avatar.svg";
 
 const normalizeStatus = (status = "") => {
   const value = String(status).toLowerCase();
   if (["valide", "validé", "validated", "certified"].includes(value)) return "Validé";
   if (["annule", "annulé", "cancelled", "canceled"].includes(value)) return "Annulé";
   return "En attente";
+};
+
+const normalizeDocument = (document, index) => {
+  const label = document.label || document.name || document.type || `Document ${index + 1}`;
+  const url = getStorageUrl(document.url || document.href || document.path || document.file);
+
+  return {
+    label,
+    url,
+    file: document.file || `${label.toLowerCase().replace(/\s+/g, "-")}.pdf`,
+  };
 };
 
 const normalizeVerification = (item) => ({
@@ -20,16 +32,16 @@ const normalizeVerification = (item) => ({
   leaderPhone: item.leaderPhone || item.telephone_association || item.telephone_dirigeant || "",
   trade: item.trade || item.metier?.nom || item.artisan?.metier?.nom || "",
   city: item.city || item.user?.ville || item.artisan?.user?.ville || "",
-  documents: item.documents || [
+  documents: (item.documents || [
     item.piece_identites || item.artisan?.piece_identites
       ? { label: "CIP", url: getStorageUrl(item.piece_identites || item.artisan?.piece_identites), file: "cip.pdf" }
       : null,
     item.diplome || item.artisan?.diplome
       ? { label: "Diplôme", url: getStorageUrl(item.diplome || item.artisan?.diplome), file: "diplome.pdf" }
       : null,
-  ].filter(Boolean),
+  ].filter(Boolean)).map(normalizeDocument).filter((document) => document.url),
   status: normalizeStatus(item.status || item.raw_status || item.verification_status || item.statut_verification),
-  avatar: getStorageUrl(item.avatar || item.user?.photo || item.artisan?.user?.photo),
+  avatar: getStorageUrl(item.avatar || item.photo || item.user?.photo || item.artisan?.user?.photo) || profileAvatar,
 });
 
 export default function ArtisanVerification() {
@@ -104,7 +116,14 @@ export default function ArtisanVerification() {
             label: "Artisan",
             render: (row) => (
               <div className="flex items-center gap-3">
-                <img src={row.avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
+                <img
+                  src={row.avatar}
+                  alt=""
+                  className="h-11 w-11 rounded-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.src = profileAvatar;
+                  }}
+                />
                 <div>
                   <p className="font-black">{row.name}</p>
                   <p className="text-xs text-[#75695F]">{row.trade}</p>

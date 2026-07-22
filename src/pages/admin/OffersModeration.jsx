@@ -5,6 +5,22 @@ import AdminTable, { StatusPill } from "../../components/admin/AdminTable";
 import { deleteAdminOffer, getAdminOffers } from "../../services/adminService";
 import { getApiMessage, getPaginatedItems, getStorageUrl } from "../../services/apiClient";
 
+const offerPlaceholder =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 80'%3E%3Crect width='96' height='80' rx='10' fill='%23F6F2ED'/%3E%3Cpath d='M18 56h60L62 36 51 48l-8-9-25 17z' fill='%23D7CABD'/%3E%3Ccircle cx='31' cy='27' r='8' fill='%23C96B2C'/%3E%3C/svg%3E";
+
+const extractOfferImage = (offer) =>
+  getStorageUrl(
+    offer.image ||
+      offer.photo ||
+      offer.cover ||
+      offer.thumbnail ||
+      offer.appel_json ||
+      offer.media_json ||
+      offer.photos ||
+      offer.media ||
+      offer.attachments
+  );
+
 const normalizeOffer = (offer) => ({
   id: offer.id,
   title: offer.title || offer.titre || "Appel d'offres",
@@ -13,7 +29,7 @@ const normalizeOffer = (offer) => ({
   budget: offer.budget ? `${Number(offer.budget).toLocaleString("fr-FR")} FCFA` : "Non précisé",
   proposals: offer.proposals || offer.candidatures_count || offer.candidatures?.length || 0,
   status: offer.status === "open" ? "Ouvert" : offer.status === "closed" ? "Terminé" : offer.status || "Ouvert",
-  image: getStorageUrl(offer.image || offer.appel_json?.[0] || offer.media_json?.[0]),
+  image: extractOfferImage(offer),
 });
 
 export default function OffersModeration() {
@@ -84,7 +100,18 @@ export default function OffersModeration() {
             label: "Appel d'offres",
             render: (row) => (
               <div className="flex items-center gap-3">
-                <img src={row.image} alt="" className="h-14 w-16 rounded-lg bg-[#F6F2ED] object-cover" />
+                {row.image ? (
+                  <img
+                    src={row.image}
+                    alt=""
+                    className="h-14 w-16 rounded-lg bg-[#F6F2ED] object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src = offerPlaceholder;
+                    }}
+                  />
+                ) : (
+                  <img src={offerPlaceholder} alt="" className="h-14 w-16 rounded-lg bg-[#F6F2ED] object-cover" />
+                )}
                 <div>
                   <p className="font-black">{row.title}</p>
                   <p className="text-xs text-[#75695F]">{row.category} · {row.owner}</p>

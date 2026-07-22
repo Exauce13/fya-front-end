@@ -32,8 +32,29 @@ export function RegistrationChart({ series = [] }) {
   );
 }
 
+const cityPalette = ["#1D6FA5", "#E4A33D", "#2E9A43", "#C9553D", "#6D5BD0", "#0F766E"];
+
+const getCityLabel = (item, index) =>
+  item.city || item.ville || item.name || item.label || `Ville ${index + 1}`;
+
+const getCityValue = (item) =>
+  Number(item.value ?? item.percentage ?? item.percent ?? item.total ?? item.count ?? item.users ?? 0);
+
+const normalizeCityShares = (shares) => {
+  if (!Array.isArray(shares)) return [];
+
+  return shares
+    .map((item, index) => ({
+      city: getCityLabel(item, index),
+      value: Math.max(0, Math.min(100, getCityValue(item))),
+      color: item.color || item.couleur || cityPalette[index % cityPalette.length],
+    }))
+    .filter((item) => item.city && item.value > 0);
+};
+
 export function CityShareChart({ shares = [] }) {
-  const chartShares = shares.length ? shares : [{ city: "Aucune", value: 100, color: "#D7CABD" }];
+  const normalizedShares = normalizeCityShares(shares);
+  const chartShares = normalizedShares.length ? normalizedShares : [{ city: "Aucune", value: 100, color: "#D7CABD" }];
   const circumference = 100;
   const segments = chartShares.reduce((acc, item, index) => {
     const previous = acc[index - 1];

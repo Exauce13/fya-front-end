@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import logo from "../../assets/images/logo.webp";
 import img from "../../assets/images/loginImg.png";
 import { getApiMessage } from "../../services/apiClient";
-import { login } from "../../services/authService";
+import { login, requestAdminOtp, verifyAdminOtp } from "../../services/authService";
 
 const rememberedLoginKey = "fya-remembered-login";
 
@@ -54,6 +54,13 @@ const loginSchema = z.object({
   remember: z.boolean().optional(),
 });
 
+const otpSchema = z.object({
+  otp: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Le code doit contenir 6 chiffres"),
+});
+
 export default function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,7 +71,14 @@ export default function LoginForm() {
 
   const [apiError, setApiError] =
     useState("");
+  const [otpChallenge, setOtpChallenge] =
+    useState(null);
+  const [otpError, setOtpError] =
+    useState("");
+  const [otpMessage, setOtpMessage] =
+    useState("");
   const successMessage = location.state?.message || "";
+  const isAdminLoginIntent = String(location.state?.from || "").startsWith("/admin");
 
   const {
     register,
@@ -83,6 +97,22 @@ export default function LoginForm() {
     },
   });
 
+  const {
+    register: registerOtp,
+    handleSubmit: handleOtpSubmit,
+    reset: resetOtp,
+    formState: {
+      errors: otpErrors,
+      isSubmitting: isVerifyingOtp,
+    },
+  } = useForm({
+    resolver: zodResolver(otpSchema),
+    mode: "onChange",
+    defaultValues: {
+      otp: "",
+    },
+  });
+
   const inputClass = (error) =>
     `w-full border rounded-xl px-4 py-3 outline-none transition
     ${
@@ -95,12 +125,63 @@ export default function LoginForm() {
     setApiError("");
 
     try {
-      await login(data);
+      const session = isAdminLoginIntent ? await requestAdminOtp(data) : await login(data);
+      if (session?.requiresOtp) {
+        setOtpChallenge({ ...session, password: data.password });
+        setOtpMessage(session.message);
+        resetOtp();
+        return;
+      }
+
       saveRememberedLogin(data);
       navigate("/", { replace: true });
     } catch (error) {
       setApiError(
         getApiMessage(error, "Email ou mot de passe incorrect.")
+      );
+    }
+  };
+
+  const onVerifyOtp = async (data) => {
+    if (!otpChallenge) return;
+    setOtpError("");
+
+    try {
+      await verifyAdminOtp({
+        email: otpChallenge.email,
+        otp: data.otp,
+        remember: otpChallenge.remember,
+      });
+      saveRememberedLogin({
+        telemail: otpChallenge.email,
+        remember: otpChallenge.remember,
+      });
+      navigate("/admin", { replace: true });
+    } catch (error) {
+      setOtpError(
+        getApiMessage(error, "Code OTP invalide ou expiré.")
+      );
+    }
+  };
+
+  const resendOtp = async () => {
+    if (!otpChallenge) return;
+    setOtpError("");
+    setOtpMessage("");
+
+    try {
+      const challenge = await requestAdminOtp({
+        email: otpChallenge.email,
+        telemail: otpChallenge.email,
+        password: otpChallenge.password,
+        remember: otpChallenge.remember,
+      });
+      setOtpChallenge({ ...challenge, password: otpChallenge.password });
+      setOtpMessage(challenge.message);
+      resetOtp();
+    } catch (error) {
+      setOtpError(
+        getApiMessage(error, "Impossible de renvoyer le code OTP.")
       );
     }
   };
@@ -136,10 +217,87 @@ export default function LoginForm() {
 
           <div className="mb-8 text-center md:text-left">
             <h2 className="text-3xl font-bold text-gray-800 mb-2">
-              Se connecter
+              {otpChallenge ? "Validation admin" : "Se connecter"}
             </h2>
           </div>
 
+          {otpChallenge ? (
+          <form
+            onSubmit={handleOtpSubmit(onVerifyOtp)}
+            className="space-y-5"
+          >
+            {otpError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl">
+                {otpError}
+              </div>
+            )}
+            {otpMessage && (
+              <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+                {otpMessage}
+              </div>
+            )}
+
+            <div>
+              <label
+                htmlFor="otp"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Code OTP
+              </label>
+              <input
+                type="text"
+                id="otp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="123456"
+                {...registerOtp("otp")}
+                className={inputClass(otpErrors.otp)}
+              />
+              {otpErrors.otp && (
+                <p className="text-sm text-red-500 mt-1">
+                  {otpErrors.otp.message}
+                </p>
+              )}
+              <p className="mt-2 text-sm text-gray-500">
+                Code envoyé à {otpChallenge.email}
+                {otpChallenge.expiresInMinutes
+                  ? `, valable ${otpChallenge.expiresInMinutes} min.`
+                  : "."}
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isVerifyingOtp}
+              className="w-full bg-blue-700 hover:bg-blue-800 disabled:bg-gray-400 text-white font-semibold py-3 rounded-xl transition duration-300 shadow-md"
+            >
+              {isVerifyingOtp ? "Vérification..." : "Valider le code"}
+            </button>
+
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <button
+                type="button"
+                onClick={resendOtp}
+                className="font-semibold text-blue-700 hover:underline"
+              >
+                Renvoyer le code
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpChallenge(null);
+                  setOtpError("");
+                  setOtpMessage("");
+                  resetOtp();
+                }}
+                className="font-semibold text-gray-600 hover:underline"
+              >
+                Changer d'email
+              </button>
+            </div>
+          </form>
+          ) : (
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-5"
@@ -296,6 +454,7 @@ export default function LoginForm() {
               </button>
             </p>
           </form>
+          )}
         </div>
       </div>
     </div>
